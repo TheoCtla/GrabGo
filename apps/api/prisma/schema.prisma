@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  MERCHANT
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CONFIRMED
+  WAITING_PULL_CONFIRMATION
+  PREPARING
+  READY
+  COMPLETED
+  LATE
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum SnackStatus {
+  ONLINE
+  OFFLINE
+  SNOOZED
+  CIRCUIT_BREAKER
+}
+
+enum SlotStatus {
+  AVAILABLE
+  FULL
+  HIDDEN
+  CLOSED
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  PAYMENT_CONFIRMED
+  PULL_CONFIRMATION
+  ORDER_READY
+  ORDER_LATE
+  ORDER_CANCELLED
+  SYSTEM
+}
+
+enum ProductType {
+  SANDWICH
+  DRINK
+  DESSERT
+  MENU
+  OTHER
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  role          Role           @default(STUDENT)
+  phone         String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  merchant      Merchant?
+  orders        Order[]
+  notifications Notification[]
+
+  @@index([email])
+}
+
+model Campus {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  snacks    Snack[]
+
+  @@unique([name, city])
+}
+
+model Merchant {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  companyName String
+  siret       String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snacks      Snack[]
+}
+
+model Snack {
+  id             String      @id @default(cuid())
+  merchantId     String
+  campusId       String
+  name           String
+  description    String?
+  status         SnackStatus @default(ONLINE)
+  circuitBreaker Boolean     @default(false)
+  snoozedUntil   DateTime?
+  openingTime    String?
+  closingTime    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  merchant       Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  campus         Campus      @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  products       Product[]
+  slots          Slot[]
+  orders         Order[]
+
+  @@unique([merchantId, name])
+  @@index([campusId])
+}
+
+model Product {
+  id                  String          @id @default(cuid())
+  snackId             String
+  name                String
+  description         String?
+  type                ProductType     @default(OTHER)
+  priceCents          Int
+  stock               Int             @default(0)
+  isAvailable         Boolean         @default(true)
+  allergensVerifiedAt DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  snack               Snack           @relation(fields: [snackId], references: [id], onDelete: Cascade)
+  options             ProductOption[]
+  allergens           Allergen[]
+  orderItems          OrderItem[]
+
+  @@unique([snackId, name])
+  @@index([snackId])
+}
+
+model ProductOption {
+  id              String   @id @default(cuid())
+  productId       String
+  name            String
+  priceDeltaCents Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, name])
+}
+
+model Allergen {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Slot {
+  id            String     @id @default(cuid())
+  snackId       String
+  startAt       DateTime
+  endAt         DateTime
+  capacity      Int
+  reservedCount Int        @default(0)
+  status        SlotStatus @default(AVAILABLE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  snack         Snack      @relation(fields: [snackId], references: [id], onDelete: Cascade)
+  orders        Order[]
+
+  @@unique([snackId, startAt])
+  @@index([snackId, startAt])
+}
+
+model Order {
+  id                 String          @id @default(cuid())
+  userId             String
+  snackId            String
+  slotId             String
+  status             OrderStatus     @default(PENDING_PAYMENT)
+  productsTotalCents Int
+  serviceFeeCents    Int             @default(49)
+  totalCents         Int
+  customerFirstName  String
+  specialNote        String?
+  pickupConfirmedAt  DateTime?
+  lateReportedAt     DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  user               User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  snack              Snack           @relation(fields: [snackId], references: [id], onDelete: Restrict)
+  slot               Slot            @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  items              OrderItem[]
+  payment            Payment?
+  receipt            Receipt?
+  withdrawalCode     WithdrawalCode?
+
+  @@index([userId])
+  @@index([snackId])
+  @@index([status])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  productId       String
+  productName     String
+  quantity        Int
+  unitPriceCents  Int
+  totalPriceCents Int
+  specialNote     String?
+  selectedOptions Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  status            PaymentStatus @default(PENDING)
+  amountCents       Int
+  provider          String        @default("simulated")
+  providerPaymentId String?
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Receipt {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  number     String   @unique
+  issuedAt   DateTime @default(now())
+  totalCents Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WithdrawalCode {
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  code      String
+  qrToken   String    @unique
+  usedAt    DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+}
