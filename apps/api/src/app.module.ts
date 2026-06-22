@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { CampusesModule } from './campuses/campuses.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
+import { SlotsModule } from './slots/slots.module';
 import { SnacksModule } from './snacks/snacks.module';
 import { UsersModule } from './users/users.module';
 
@@ -27,7 +28,8 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     CampusesModule,
     SnacksModule,
-    ProductsModule
+    ProductsModule,
+    SlotsModule
   ],
   controllers: [AppController],
   providers: [
