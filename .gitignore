@@ -2,8 +2,13 @@ node_modules/
 dist/
 coverage/
 .env
+apps/api/.env
 .env.local
 .env.*.local
 *.log
 *.tsbuildinfo
 .DS_Store
+AGENTS.md
+NOTES.md
+TODO_INTERNAL.md
+CODEX_NOTES.md

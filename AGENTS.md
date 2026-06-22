@@ -590,6 +590,7 @@ Toujours respecter ces règles :
 * ne pas supprimer un fichier existant sans raison claire
 * À chaque nouvelle étape métier, vérifier les règles techniques différées de ce fichier avant de coder. Ne jamais ignorer une règle marquée comme différée sous prétexte qu'elle n'était pas nécessaire dans une étape précédente.
 * Si une décision est prise pendant le développement mais doit être implémentée plus tard, l’ajouter immédiatement dans la section "Règles techniques différées à ne pas oublier" de AGENTS.md avant de continuer.
+* Lorsqu’une nouvelle variable d’environnement est ajoutée, mettre à jour `.env.example` et, si nécessaire pour l’exécution locale, les fichiers `.env` locaux non versionnés. Ne jamais commit les fichiers `.env`.
 
 20. État actuel du développement
 
@@ -598,7 +599,16 @@ Les étapes suivantes sont déjà réalisées :
 * Étape 1 : initialisation technique du monorepo
 * Étape 2 : création du schéma Prisma métier minimum
 * Ajout des règles techniques différées dans AGENTS.md
-
-La prochaine étape recommandée est :
-
-* Créer la première migration Prisma à partir du schéma existant.
+* Étape 3 : création et application de la première migration Prisma `init_grabgo_schema`
+* Étape 4 : génération du client Prisma
+* Étape 5 : création du `PrismaModule` et du `PrismaService` dans l’API NestJS
+* Étape 6 : import du `PrismaModule` dans `AppModule`
+* Étape 7 : ajout de la configuration applicative et des protections de sécurité de base dans l’API NestJS
+* Étape 8 : ajout de la validation globale des entrées avec `ValidationPipe`, `class-validator` et `class-transformer`
+* Étape 9 : création des premiers DTO communs réutilisables pour la pagination et les paramètres d’identifiant
+* Étape 10 : création du module `Users` de base avec `UsersService`, `CreateUserDto` et tests unitaires
+* Étape 11 : ajout d’une représentation sécurisée `SafeUser` pour éviter l’exposition de `passwordHash`
+* Étape 12 : création de la base d’authentification avec `AuthModule`, `AuthController`, `AuthService`, register, login, hash `argon2` et JWT
+* Étape 13 : ajout de la stratégie JWT, du `JwtAuthGuard`, du `RolesGuard`, des décorateurs `CurrentUser` et `Roles`, et de la route protégée `GET /api/auth/me`
+* Étape 14 : création des modules de lecture catalogue `Campuses`, `Snacks` et `Products` avec routes publiques de consultation et filtres étudiant
+* Étape 15 : obligation du paramètre `snackId` sur la route de liste des produits pour respecter le parcours étudiant
