@@ -2,6 +2,7 @@ import { OrderStatus, Role } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
+import { StudentOrdersQueryDto } from './dto/student-orders-query.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 import { OrdersController } from './orders.controller';
@@ -10,6 +11,7 @@ import { OrdersService } from './orders.service';
 type OrdersServiceMock = {
   createOrder: jest.Mock<Promise<unknown>, [string, CreateOrderDto]>;
   findMerchantOrders: jest.Mock<Promise<unknown>, [string, MerchantOrdersQueryDto]>;
+  findStudentOrders: jest.Mock<Promise<unknown>, [string, StudentOrdersQueryDto]>;
   paySimulatedOrder: jest.Mock<Promise<unknown>, [string, string]>;
   updateMerchantOrderStatus: jest.Mock<Promise<unknown>, [string, string, OrderStatus]>;
   validateWithdrawal: jest.Mock<Promise<unknown>, [string, ValidateWithdrawalDto]>;
@@ -24,6 +26,7 @@ describe('OrdersController', () => {
   const ordersService: OrdersServiceMock = {
     createOrder: jest.fn<Promise<unknown>, [string, CreateOrderDto]>(),
     findMerchantOrders: jest.fn<Promise<unknown>, [string, MerchantOrdersQueryDto]>(),
+    findStudentOrders: jest.fn<Promise<unknown>, [string, StudentOrdersQueryDto]>(),
     paySimulatedOrder: jest.fn<Promise<unknown>, [string, string]>(),
     updateMerchantOrderStatus: jest.fn<Promise<unknown>, [string, string, OrderStatus]>(),
     validateWithdrawal: jest.fn<Promise<unknown>, [string, ValidateWithdrawalDto]>()
@@ -50,6 +53,17 @@ describe('OrdersController', () => {
 
     await expect(controller.createOrder(user, dto)).resolves.toEqual(order);
     expect(ordersService.createOrder).toHaveBeenCalledWith(user.id, dto);
+  });
+
+  it('calls OrdersService.findStudentOrders with the current user id and query', async () => {
+    const query: StudentOrdersQueryDto = {
+      status: OrderStatus.CONFIRMED
+    };
+    const orders = [{ id: 'order-id', status: query.status }];
+    ordersService.findStudentOrders.mockResolvedValue(orders);
+
+    await expect(controller.findStudentOrders(user, query)).resolves.toEqual(orders);
+    expect(ordersService.findStudentOrders).toHaveBeenCalledWith(user.id, query);
   });
 
   it('calls OrdersService.findMerchantOrders with the current user id and query', async () => {

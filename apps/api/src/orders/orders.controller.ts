@@ -8,6 +8,7 @@ import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { IdParamDto } from '../common/dto/id-param.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
+import { StudentOrdersQueryDto } from './dto/student-orders-query.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 import { OrdersService } from './orders.service';
@@ -21,6 +22,13 @@ export class OrdersController {
   @Post()
   createOrder(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateOrderDto) {
     return this.ordersService.createOrder(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @Get('me')
+  findStudentOrders(@CurrentUser() user: AuthenticatedUser, @Query() query: StudentOrdersQueryDto) {
+    return this.ordersService.findStudentOrders(user.id, query);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

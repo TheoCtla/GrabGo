@@ -17,6 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
+import { StudentOrdersQueryDto } from './dto/student-orders-query.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 
 const SERVICE_FEE_CENTS = 49;
@@ -124,6 +125,8 @@ type MerchantOrderListItem = Prisma.OrderGetPayload<{
   };
 }>;
 
+type StudentOrderListItem = CreatedOrder;
+
 @Injectable()
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -222,6 +225,31 @@ export class OrdersService {
           withdrawalCode: true
         }
       });
+    });
+  }
+
+  async findStudentOrders(
+    studentId: string,
+    query: StudentOrdersQueryDto
+  ): Promise<StudentOrderListItem[]> {
+    const createdAtFilter = this.buildStudentOrdersCreatedAtFilter(query);
+
+    return this.prisma.order.findMany({
+      where: {
+        userId: studentId,
+        status: query.status,
+        ...(createdAtFilter ? { createdAt: createdAtFilter } : {})
+      },
+      include: {
+        items: true,
+        payment: true,
+        slot: true,
+        snack: true,
+        withdrawalCode: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
   }
 
@@ -711,6 +739,26 @@ export class OrdersService {
 
   private getWithdrawalExpiresAt(slotEndAt: Date): Date {
     return new Date(slotEndAt.getTime() + WITHDRAWAL_EXPIRATION_DELAY_MS);
+  }
+
+  private buildStudentOrdersCreatedAtFilter(
+    query: StudentOrdersQueryDto
+  ): Prisma.DateTimeFilter | undefined {
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+
+    if (from && to && from >= to) {
+      throw new BadRequestException('from must be before to');
+    }
+
+    if (!from && !to) {
+      return undefined;
+    }
+
+    return {
+      ...(from ? { gte: from } : {}),
+      ...(to ? { lt: to } : {})
+    };
   }
 
   private buildMerchantOrdersSlotStartAtFilter(
