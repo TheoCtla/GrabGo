@@ -1,12 +1,14 @@
 import { Role } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 
 type OrdersServiceMock = {
   createOrder: jest.Mock<Promise<unknown>, [string, CreateOrderDto]>;
   paySimulatedOrder: jest.Mock<Promise<unknown>, [string, string]>;
+  validateWithdrawal: jest.Mock<Promise<unknown>, [string, ValidateWithdrawalDto]>;
 };
 
 describe('OrdersController', () => {
@@ -17,7 +19,8 @@ describe('OrdersController', () => {
   };
   const ordersService: OrdersServiceMock = {
     createOrder: jest.fn<Promise<unknown>, [string, CreateOrderDto]>(),
-    paySimulatedOrder: jest.fn<Promise<unknown>, [string, string]>()
+    paySimulatedOrder: jest.fn<Promise<unknown>, [string, string]>(),
+    validateWithdrawal: jest.fn<Promise<unknown>, [string, ValidateWithdrawalDto]>()
   };
   const controller = new OrdersController(ordersService as unknown as OrdersService);
 
@@ -49,5 +52,21 @@ describe('OrdersController', () => {
 
     await expect(controller.payOrder(user, { id: 'order-id' })).resolves.toEqual(order);
     expect(ordersService.paySimulatedOrder).toHaveBeenCalledWith(user.id, 'order-id');
+  });
+
+  it('calls OrdersService.validateWithdrawal with the current user id and dto', async () => {
+    const merchantUser: AuthenticatedUser = {
+      id: 'merchant-user-id',
+      email: 'merchant@grabgo.test',
+      role: Role.MERCHANT
+    };
+    const dto: ValidateWithdrawalDto = {
+      qrToken: 'qr-token'
+    };
+    const order = { id: 'order-id', status: 'COMPLETED' };
+    ordersService.validateWithdrawal.mockResolvedValue(order);
+
+    await expect(controller.validateWithdrawal(merchantUser, dto)).resolves.toEqual(order);
+    expect(ordersService.validateWithdrawal).toHaveBeenCalledWith(merchantUser.id, dto);
   });
 });
