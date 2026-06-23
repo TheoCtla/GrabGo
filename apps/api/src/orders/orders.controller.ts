@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { IdParamDto } from '../common/dto/id-param.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 import { OrdersService } from './orders.service';
@@ -20,6 +21,16 @@ export class OrdersController {
   @Post()
   createOrder(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateOrderDto) {
     return this.ordersService.createOrder(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MERCHANT)
+  @Get('merchant')
+  findMerchantOrders(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: MerchantOrdersQueryDto
+  ) {
+    return this.ordersService.findMerchantOrders(user.id, query);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

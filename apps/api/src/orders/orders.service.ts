@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
+import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 
 const SERVICE_FEE_CENTS = 49;
@@ -100,6 +101,24 @@ type MerchantOrder = Prisma.OrderGetPayload<{
     snack: {
       include: {
         merchant: true;
+      };
+    };
+  };
+}>;
+
+type MerchantOrderListItem = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    payment: true;
+    slot: true;
+    snack: true;
+    withdrawalCode: true;
+    user: {
+      select: {
+        id: true;
+        firstName: true;
+        lastName: true;
+        email: true;
       };
     };
   };
@@ -203,6 +222,51 @@ export class OrdersService {
           withdrawalCode: true
         }
       });
+    });
+  }
+
+  async findMerchantOrders(
+    merchantId: string,
+    query: MerchantOrdersQueryDto
+  ): Promise<MerchantOrderListItem[]> {
+    return this.prisma.order.findMany({
+      where: {
+        snack: {
+          id: query.snackId,
+          merchant: {
+            userId: merchantId
+          }
+        },
+        status: query.status,
+        slot: {
+          startAt: this.buildMerchantOrdersSlotStartAtFilter(query)
+        }
+      },
+      include: {
+        items: true,
+        payment: true,
+        slot: true,
+        snack: true,
+        withdrawalCode: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
+      },
+      orderBy: [
+        {
+          slot: {
+            startAt: 'asc'
+          }
+        },
+        {
+          createdAt: 'asc'
+        }
+      ]
     });
   }
 
@@ -647,6 +711,31 @@ export class OrdersService {
 
   private getWithdrawalExpiresAt(slotEndAt: Date): Date {
     return new Date(slotEndAt.getTime() + WITHDRAWAL_EXPIRATION_DELAY_MS);
+  }
+
+  private buildMerchantOrdersSlotStartAtFilter(
+    query: MerchantOrdersQueryDto
+  ): Prisma.DateTimeFilter {
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+
+    if (from && to && from >= to) {
+      throw new BadRequestException('from must be before to');
+    }
+
+    if (!from && !to) {
+      const serviceDay = this.getServiceDayBounds(new Date());
+
+      return {
+        gte: serviceDay.start,
+        lt: serviceDay.end
+      };
+    }
+
+    return {
+      ...(from ? { gte: from } : {}),
+      ...(to ? { lt: to } : {})
+    };
   }
 
   private getServiceDayBounds(date: Date): { start: Date; end: Date } {
