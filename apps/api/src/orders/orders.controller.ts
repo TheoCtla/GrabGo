@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { IdParamDto } from '../common/dto/id-param.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -25,5 +26,12 @@ export class OrdersController {
   @Post(':id/pay')
   payOrder(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
     return this.ordersService.paySimulatedOrder(user.id, params.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MERCHANT)
+  @Post('withdrawal/validate')
+  validateWithdrawal(@CurrentUser() user: AuthenticatedUser, @Body() dto: ValidateWithdrawalDto) {
+    return this.ordersService.validateWithdrawal(user.id, dto);
   }
 }
