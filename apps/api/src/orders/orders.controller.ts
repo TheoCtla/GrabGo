@@ -42,6 +42,13 @@ export class OrdersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT, Role.MERCHANT, Role.ADMIN)
+  @Get(':id')
+  findOrderById(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {
+    return this.ordersService.findOrderByIdForUser(user, params.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STUDENT)
   @Post(':id/pay')
   payOrder(@CurrentUser() user: AuthenticatedUser, @Param() params: IdParamDto) {

@@ -10,6 +10,7 @@ import { OrdersService } from './orders.service';
 
 type OrdersServiceMock = {
   createOrder: jest.Mock<Promise<unknown>, [string, CreateOrderDto]>;
+  findOrderByIdForUser: jest.Mock<Promise<unknown>, [AuthenticatedUser, string]>;
   findMerchantOrders: jest.Mock<Promise<unknown>, [string, MerchantOrdersQueryDto]>;
   findStudentOrders: jest.Mock<Promise<unknown>, [string, StudentOrdersQueryDto]>;
   paySimulatedOrder: jest.Mock<Promise<unknown>, [string, string]>;
@@ -25,6 +26,7 @@ describe('OrdersController', () => {
   };
   const ordersService: OrdersServiceMock = {
     createOrder: jest.fn<Promise<unknown>, [string, CreateOrderDto]>(),
+    findOrderByIdForUser: jest.fn<Promise<unknown>, [AuthenticatedUser, string]>(),
     findMerchantOrders: jest.fn<Promise<unknown>, [string, MerchantOrdersQueryDto]>(),
     findStudentOrders: jest.fn<Promise<unknown>, [string, StudentOrdersQueryDto]>(),
     paySimulatedOrder: jest.fn<Promise<unknown>, [string, string]>(),
@@ -80,6 +82,14 @@ describe('OrdersController', () => {
 
     await expect(controller.findMerchantOrders(merchantUser, query)).resolves.toEqual(orders);
     expect(ordersService.findMerchantOrders).toHaveBeenCalledWith(merchantUser.id, query);
+  });
+
+  it('calls OrdersService.findOrderByIdForUser with the current user and order id', async () => {
+    const order = { id: 'order-id' };
+    ordersService.findOrderByIdForUser.mockResolvedValue(order);
+
+    await expect(controller.findOrderById(user, { id: 'order-id' })).resolves.toEqual(order);
+    expect(ordersService.findOrderByIdForUser).toHaveBeenCalledWith(user, 'order-id');
   });
 
   it('calls OrdersService.paySimulatedOrder with the current user id and order id', async () => {

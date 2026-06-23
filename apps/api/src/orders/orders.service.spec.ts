@@ -17,6 +17,7 @@ import {
   User,
   WithdrawalCode
 } from '@prisma/client';
+import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
@@ -88,6 +89,28 @@ type MerchantOrderListItem = Prisma.OrderGetPayload<{
   };
 }>;
 
+type OrderDetail = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    payment: true;
+    slot: true;
+    snack: {
+      include: {
+        merchant: true;
+      };
+    };
+    withdrawalCode: true;
+    user: {
+      select: {
+        id: true;
+        firstName: true;
+        lastName: true;
+        email: true;
+      };
+    };
+  };
+}>;
+
 type OrderFindManyResult = CreatedOrder | MerchantOrderListItem;
 
 type TransactionMock = {
@@ -131,7 +154,7 @@ type PrismaMock = {
   };
   order: {
     findUnique: jest.Mock<
-      Promise<PayableOrder | MerchantOrder | CreatedOrder | null>,
+      Promise<PayableOrder | MerchantOrder | CreatedOrder | OrderDetail | null>,
       [Prisma.OrderFindUniqueArgs]
     >;
     findMany: jest.Mock<Promise<OrderFindManyResult[]>, [Prisma.OrderFindManyArgs]>;
@@ -144,6 +167,21 @@ describe('OrdersService', () => {
   let service: OrdersService;
   const now = new Date('2026-01-01T10:00:00.000Z');
   const merchantId = 'merchant-user-id';
+  const studentUser: AuthenticatedUser = {
+    id: 'student-id',
+    email: 'student@grabgo.test',
+    role: Role.STUDENT
+  };
+  const merchantUser: AuthenticatedUser = {
+    id: merchantId,
+    email: 'merchant@grabgo.test',
+    role: Role.MERCHANT
+  };
+  const adminUser: AuthenticatedUser = {
+    id: 'admin-user-id',
+    email: 'admin@grabgo.test',
+    role: Role.ADMIN
+  };
   const student: User = {
     id: 'student-id',
     email: 'student@grabgo.test',
@@ -219,7 +257,7 @@ describe('OrdersService', () => {
     },
     order: {
       findUnique: jest.fn<
-        Promise<PayableOrder | MerchantOrder | CreatedOrder | null>,
+        Promise<PayableOrder | MerchantOrder | CreatedOrder | OrderDetail | null>,
         [Prisma.OrderFindUniqueArgs]
       >(),
       findMany: jest.fn<Promise<OrderFindManyResult[]>, [Prisma.OrderFindManyArgs]>(),
@@ -451,6 +489,38 @@ describe('OrdersService', () => {
       },
       ...overrides
     };
+  }
+
+  function createOrderDetail(overrides: Partial<OrderDetail> = {}): OrderDetail {
+    const order = createOrder();
+
+    return {
+      ...order,
+      snack: {
+        ...order.snack,
+        merchant: {
+          id: 'merchant-id',
+          userId: merchantId,
+          companyName: 'Snack Campus SARL',
+          siret: null,
+          createdAt: now,
+          updatedAt: now
+        }
+      },
+      user: {
+        id: student.id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        email: student.email
+      },
+      ...overrides
+    };
+  }
+
+  function arrangeOrderDetail(order = createOrderDetail()) {
+    prismaMock.order.findUnique.mockResolvedValue(order);
+
+    return order;
   }
 
   function arrangeMerchantOrdersList(orders = [createMerchantOrderListItem()]) {
@@ -900,6 +970,115 @@ describe('OrdersService', () => {
       })
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaMock.order.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns an order detail when the student owns it', async () => {
+    const order = arrangeOrderDetail();
+
+    await expect(service.findOrderByIdForUser(studentUser, 'order-id')).resolves.toEqual(order);
+  });
+
+  it('refuses an order detail when the student does not own it', async () => {
+    arrangeOrderDetail(
+      createOrderDetail({
+        userId: 'other-student-id'
+      })
+    );
+
+    await expect(service.findOrderByIdForUser(studentUser, 'order-id')).rejects.toBeInstanceOf(
+      ForbiddenException
+    );
+  });
+
+  it('returns an order detail when the merchant owns the snack', async () => {
+    const order = arrangeOrderDetail();
+
+    await expect(service.findOrderByIdForUser(merchantUser, 'order-id')).resolves.toEqual(order);
+  });
+
+  it('refuses an order detail when the merchant does not own the snack', async () => {
+    const order = createOrderDetail();
+    arrangeOrderDetail({
+      ...order,
+      snack: {
+        ...order.snack,
+        merchant: {
+          ...order.snack.merchant,
+          userId: 'other-merchant-user-id'
+        }
+      }
+    });
+
+    await expect(service.findOrderByIdForUser(merchantUser, 'order-id')).rejects.toBeInstanceOf(
+      ForbiddenException
+    );
+  });
+
+  it('returns an order detail for an admin user', async () => {
+    const order = arrangeOrderDetail();
+
+    await expect(service.findOrderByIdForUser(adminUser, 'order-id')).resolves.toEqual(order);
+  });
+
+  it('refuses a missing order detail with NotFoundException', async () => {
+    prismaMock.order.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.findOrderByIdForUser(studentUser, 'missing-order-id')
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('returns an order detail with items, payment, slot, snack and withdrawalCode', async () => {
+    const order = arrangeOrderDetail();
+
+    await expect(service.findOrderByIdForUser(studentUser, 'order-id')).resolves.toMatchObject({
+      items: order.items,
+      payment: order.payment,
+      slot: order.slot,
+      snack: order.snack,
+      withdrawalCode: order.withdrawalCode
+    });
+    const call = prismaMock.order.findUnique.mock.calls[0];
+
+    if (!call) {
+      throw new Error('Expected order.findUnique to be called');
+    }
+
+    expect(call[0].include).toMatchObject({
+      items: true,
+      payment: true,
+      slot: true,
+      snack: {
+        include: {
+          merchant: true
+        }
+      },
+      withdrawalCode: true
+    });
+  });
+
+  it('includes a minimal student user without passwordHash in order detail', async () => {
+    const order = arrangeOrderDetail();
+
+    const result = await service.findOrderByIdForUser(studentUser, 'order-id');
+    const call = prismaMock.order.findUnique.mock.calls[0];
+
+    if (!call) {
+      throw new Error('Expected order.findUnique to be called');
+    }
+
+    expect(result.user).toEqual(order.user);
+    expect(result.user).not.toHaveProperty('passwordHash');
+    expect(call[0].include).toMatchObject({
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true
+        }
+      }
+    });
   });
 
   it('returns orders for the connected merchant', async () => {
