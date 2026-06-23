@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException
 } from '@nestjs/common';
+import { randomInt, randomUUID } from 'crypto';
 import {
   OrderStatus,
   PaymentStatus,
@@ -17,6 +19,15 @@ import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 
 const SERVICE_FEE_CENTS = 49;
 const SIMULATED_PAYMENT_PROVIDER = 'simulated';
+const WITHDRAWAL_CODE_ATTEMPTS = 20;
+const WITHDRAWAL_EXPIRATION_DELAY_MS = 2 * 60 * 60 * 1000;
+const ACTIVE_WITHDRAWAL_ORDER_STATUSES = [
+  OrderStatus.CONFIRMED,
+  OrderStatus.WAITING_PULL_CONFIRMATION,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.LATE
+];
 
 type SlotWithSnack = Prisma.SlotGetPayload<{
   include: { snack: true };
@@ -28,14 +39,26 @@ type CreatedOrder = Prisma.OrderGetPayload<{
     payment: true;
     slot: true;
     snack: true;
+    withdrawalCode: true;
   };
 }>;
 
-type OrderWithPayment = Prisma.OrderGetPayload<{
+type PayableOrder = Prisma.OrderGetPayload<{
   include: {
     payment: true;
+    slot: true;
+    withdrawalCode: true;
   };
 }>;
+
+type WithdrawalOrderData = {
+  id: string;
+  snackId: string;
+  slot: {
+    startAt: Date;
+    endAt: Date;
+  };
+};
 
 @Injectable()
 export class OrdersService {
@@ -131,7 +154,8 @@ export class OrdersService {
           items: true,
           payment: true,
           slot: true,
-          snack: true
+          snack: true,
+          withdrawalCode: true
         }
       });
     });
@@ -141,7 +165,11 @@ export class OrdersService {
     const now = new Date();
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { payment: true }
+      include: {
+        payment: true,
+        slot: true,
+        withdrawalCode: true
+      }
     });
 
     if (!order) {
@@ -189,13 +217,16 @@ export class OrdersService {
         throw new BadRequestException('Order cannot be confirmed');
       }
 
+      await this.generateWithdrawalCodeForOrder(tx, order);
+
       const updatedOrder = await tx.order.findUnique({
         where: { id: orderId },
         include: {
           items: true,
           payment: true,
           slot: true,
-          snack: true
+          snack: true,
+          withdrawalCode: true
         }
       });
 
@@ -237,7 +268,7 @@ export class OrdersService {
     }
   }
 
-  private ensureOrderCanBePaid(order: OrderWithPayment, studentId: string): void {
+  private ensureOrderCanBePaid(order: PayableOrder, studentId: string): void {
     if (order.userId !== studentId) {
       throw new ForbiddenException('Order does not belong to the current student');
     }
@@ -257,6 +288,75 @@ export class OrdersService {
     if (order.payment.status !== PaymentStatus.PENDING) {
       throw new BadRequestException('Payment is not pending');
     }
+  }
+
+  private async generateWithdrawalCodeForOrder(
+    tx: Prisma.TransactionClient,
+    order: WithdrawalOrderData
+  ) {
+    const existingWithdrawalCode = await tx.withdrawalCode.findUnique({
+      where: {
+        orderId: order.id
+      }
+    });
+
+    if (existingWithdrawalCode) {
+      return existingWithdrawalCode;
+    }
+
+    const serviceDay = this.getServiceDayBounds(order.slot.startAt);
+
+    for (let attempt = 0; attempt < WITHDRAWAL_CODE_ATTEMPTS; attempt += 1) {
+      const code = this.generateFourDigitWithdrawalCode();
+      const activeCollision = await tx.withdrawalCode.findFirst({
+        where: {
+          code,
+          order: {
+            snackId: order.snackId,
+            status: {
+              in: ACTIVE_WITHDRAWAL_ORDER_STATUSES
+            },
+            slot: {
+              startAt: {
+                gte: serviceDay.start,
+                lt: serviceDay.end
+              }
+            }
+          }
+        }
+      });
+
+      if (!activeCollision) {
+        return tx.withdrawalCode.create({
+          data: {
+            orderId: order.id,
+            code,
+            qrToken: randomUUID(),
+            expiresAt: this.getWithdrawalExpiresAt(order.slot.endAt)
+          }
+        });
+      }
+    }
+
+    throw new InternalServerErrorException('Unable to generate a withdrawal code');
+  }
+
+  private generateFourDigitWithdrawalCode(): string {
+    return randomInt(0, 10_000).toString().padStart(4, '0');
+  }
+
+  private getWithdrawalExpiresAt(slotEndAt: Date): Date {
+    return new Date(slotEndAt.getTime() + WITHDRAWAL_EXPIRATION_DELAY_MS);
+  }
+
+  private getServiceDayBounds(date: Date): { start: Date; end: Date } {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    return { start, end };
   }
 
   private async findAndValidateProducts(dto: CreateOrderDto): Promise<Product[]> {
