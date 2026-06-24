@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   OrderStatus,
@@ -22,8 +22,8 @@ import { OrdersService } from './orders.service';
 import { MerchantOrdersService } from './services/merchant-orders.service';
 import { MerchantOrderStatusService } from './services/merchant-order-status.service';
 import { OrderDetailService } from './services/order-detail.service';
+import { SimulatedPaymentService } from './services/simulated-payment.service';
 import { StudentOrdersService } from './services/student-orders.service';
-import { WithdrawalCodeOrderData, WithdrawalCodeService } from './services/withdrawal-code.service';
 import { WithdrawalValidationService } from './services/withdrawal-validation.service';
 
 type SlotWithSnack = Prisma.SlotGetPayload<{
@@ -40,25 +40,12 @@ type CreatedOrder = Prisma.OrderGetPayload<{
   };
 }>;
 
-type PayableOrder = Prisma.OrderGetPayload<{
-  include: {
-    payment: true;
-    slot: true;
-    withdrawalCode: true;
-  };
-}>;
-
 type TransactionMock = {
   slot: {
     updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.SlotUpdateManyArgs]>;
   };
-  payment: {
-    updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.PaymentUpdateManyArgs]>;
-  };
   order: {
     create: jest.Mock<Promise<CreatedOrder>, [Prisma.OrderCreateArgs]>;
-    updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.OrderUpdateManyArgs]>;
-    findUnique: jest.Mock<Promise<CreatedOrder | null>, [Prisma.OrderFindUniqueArgs]>;
   };
 };
 
@@ -74,13 +61,6 @@ type PrismaMock = {
   };
   product: {
     findMany: jest.Mock<Promise<Product[]>, [Prisma.ProductFindManyArgs]>;
-  };
-  order: {
-    findUnique: jest.Mock<
-      Promise<PayableOrder | CreatedOrder | null>,
-      [Prisma.OrderFindUniqueArgs]
-    >;
-    updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.OrderUpdateManyArgs]>;
   };
   $transaction: jest.Mock<Promise<CreatedOrder>, [(tx: TransactionMock) => Promise<CreatedOrder>]>;
 };
@@ -101,11 +81,8 @@ type MerchantOrderStatusServiceMock = {
   updateMerchantOrderStatus: jest.Mock<Promise<unknown>, [string, string, OrderStatus]>;
 };
 
-type WithdrawalCodeServiceMock = {
-  generateWithdrawalCodeForOrder: jest.Mock<
-    Promise<WithdrawalCode>,
-    [Prisma.TransactionClient, WithdrawalCodeOrderData]
-  >;
+type SimulatedPaymentServiceMock = {
+  paySimulatedOrder: jest.Mock<Promise<unknown>, [string, string]>;
 };
 
 type WithdrawalValidationServiceMock = {
@@ -160,13 +137,8 @@ describe('OrdersService', () => {
     slot: {
       updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.SlotUpdateManyArgs]>()
     },
-    payment: {
-      updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.PaymentUpdateManyArgs]>()
-    },
     order: {
-      create: jest.fn<Promise<CreatedOrder>, [Prisma.OrderCreateArgs]>(),
-      updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.OrderUpdateManyArgs]>(),
-      findUnique: jest.fn<Promise<CreatedOrder | null>, [Prisma.OrderFindUniqueArgs]>()
+      create: jest.fn<Promise<CreatedOrder>, [Prisma.OrderCreateArgs]>()
     }
   };
   const prismaMock: PrismaMock = {
@@ -182,13 +154,6 @@ describe('OrdersService', () => {
     product: {
       findMany: jest.fn<Promise<Product[]>, [Prisma.ProductFindManyArgs]>()
     },
-    order: {
-      findUnique: jest.fn<
-        Promise<PayableOrder | CreatedOrder | null>,
-        [Prisma.OrderFindUniqueArgs]
-      >(),
-      updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.OrderUpdateManyArgs]>()
-    },
     $transaction: jest.fn<Promise<CreatedOrder>, [(tx: TransactionMock) => Promise<CreatedOrder>]>()
   };
   const studentOrdersServiceMock: StudentOrdersServiceMock = {
@@ -203,11 +168,8 @@ describe('OrdersService', () => {
   const merchantOrderStatusServiceMock: MerchantOrderStatusServiceMock = {
     updateMerchantOrderStatus: jest.fn<Promise<unknown>, [string, string, OrderStatus]>()
   };
-  const withdrawalCodeServiceMock: WithdrawalCodeServiceMock = {
-    generateWithdrawalCodeForOrder: jest.fn<
-      Promise<WithdrawalCode>,
-      [Prisma.TransactionClient, WithdrawalCodeOrderData]
-    >()
+  const simulatedPaymentServiceMock: SimulatedPaymentServiceMock = {
+    paySimulatedOrder: jest.fn<Promise<unknown>, [string, string]>()
   };
   const withdrawalValidationServiceMock: WithdrawalValidationServiceMock = {
     validateWithdrawal: jest.fn<Promise<unknown>, [string, ValidateWithdrawalDto]>()
@@ -328,18 +290,6 @@ describe('OrdersService', () => {
     };
   }
 
-  function createPayableOrder(overrides: Partial<PayableOrder> = {}): PayableOrder {
-    const order = createOrder();
-    const { items, snack, ...payableOrder } = order;
-    void items;
-    void snack;
-
-    return {
-      ...payableOrder,
-      ...overrides
-    };
-  }
-
   function arrangeValidOrder(): CreatedOrder {
     const order = createOrder();
     prismaMock.user.findUnique.mockResolvedValue(student);
@@ -350,33 +300,6 @@ describe('OrdersService', () => {
     prismaMock.$transaction.mockImplementation((callback) => callback(txMock));
 
     return order;
-  }
-
-  function arrangePayableOrder(): CreatedOrder {
-    const withdrawalCode = createWithdrawalCode();
-    const paidOrder = createOrder({
-      status: OrderStatus.CONFIRMED,
-      payment: {
-        id: 'payment-id',
-        orderId: 'order-id',
-        status: PaymentStatus.PAID,
-        amountCents: 949,
-        provider: 'simulated',
-        providerPaymentId: null,
-        paidAt: now,
-        createdAt: now,
-        updatedAt: now
-      },
-      withdrawalCode
-    });
-    prismaMock.order.findUnique.mockResolvedValue(createPayableOrder());
-    txMock.payment.updateMany.mockResolvedValue({ count: 1 });
-    txMock.order.updateMany.mockResolvedValue({ count: 1 });
-    withdrawalCodeServiceMock.generateWithdrawalCodeForOrder.mockResolvedValue(withdrawalCode);
-    txMock.order.findUnique.mockResolvedValue(paidOrder);
-    prismaMock.$transaction.mockImplementation((callback) => callback(txMock));
-
-    return paidOrder;
   }
 
   beforeEach(async () => {
@@ -407,8 +330,8 @@ describe('OrdersService', () => {
           useValue: merchantOrderStatusServiceMock
         },
         {
-          provide: WithdrawalCodeService,
-          useValue: withdrawalCodeServiceMock
+          provide: SimulatedPaymentService,
+          useValue: simulatedPaymentServiceMock
         },
         {
           provide: WithdrawalValidationService,
@@ -689,182 +612,18 @@ describe('OrdersService', () => {
     );
   });
 
-  it('pays a pending simulated order', async () => {
-    const paidOrder = arrangePayableOrder();
+  it('delegates simulated payment to SimulatedPaymentService', async () => {
+    const paidOrder = createOrder({
+      status: OrderStatus.CONFIRMED,
+      withdrawalCode: createWithdrawalCode()
+    });
+    simulatedPaymentServiceMock.paySimulatedOrder.mockResolvedValue(paidOrder);
 
     await expect(service.paySimulatedOrder(student.id, 'order-id')).resolves.toEqual(paidOrder);
-  });
-
-  it('delegates withdrawal code generation during simulated payment', async () => {
-    arrangePayableOrder();
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-    const call = withdrawalCodeServiceMock.generateWithdrawalCodeForOrder.mock.calls[0];
-
-    if (!call) {
-      throw new Error('Expected generateWithdrawalCodeForOrder to be called');
-    }
-
-    expect(call[0]).toBe(txMock);
-    expect(call[1]).toMatchObject({
-      id: 'order-id',
-      snackId: 'snack-id',
-      slot: {
-        startAt: new Date('2026-01-01T12:00:00.000Z'),
-        endAt: new Date('2026-01-01T12:15:00.000Z')
-      }
-    });
-  });
-
-  it('returns the paid order with its withdrawal code', async () => {
-    const withdrawalCode = createWithdrawalCode();
-    arrangePayableOrder();
-    txMock.order.findUnique.mockResolvedValue(
-      createOrder({
-        status: OrderStatus.CONFIRMED,
-        withdrawalCode
-      })
+    expect(simulatedPaymentServiceMock.paySimulatedOrder).toHaveBeenCalledWith(
+      student.id,
+      'order-id'
     );
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).resolves.toMatchObject({
-      withdrawalCode
-    });
-  });
-
-  it('updates the payment status to PAID and sets paidAt', async () => {
-    arrangePayableOrder();
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-
-    expect(txMock.payment.updateMany).toHaveBeenCalledWith({
-      where: {
-        orderId: 'order-id',
-        provider: 'simulated',
-        status: PaymentStatus.PENDING,
-        order: {
-          userId: student.id,
-          status: OrderStatus.PENDING_PAYMENT
-        }
-      },
-      data: {
-        status: PaymentStatus.PAID,
-        paidAt: now
-      }
-    });
-  });
-
-  it('updates the order status to CONFIRMED after payment is paid', async () => {
-    arrangePayableOrder();
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-
-    expect(txMock.order.updateMany).toHaveBeenCalledWith({
-      where: {
-        id: 'order-id',
-        userId: student.id,
-        status: OrderStatus.PENDING_PAYMENT,
-        payment: {
-          status: PaymentStatus.PAID
-        }
-      },
-      data: {
-        status: OrderStatus.CONFIRMED
-      }
-    });
-  });
-
-  it('refuses a missing order during simulated payment', async () => {
-    arrangePayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue(null);
-
-    await expect(service.paySimulatedOrder(student.id, 'missing-order')).rejects.toBeInstanceOf(
-      NotFoundException
-    );
-  });
-
-  it('refuses an order owned by another student', async () => {
-    arrangePayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue(
-      createPayableOrder({
-        userId: 'other-student-id'
-      })
-    );
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      ForbiddenException
-    );
-  });
-
-  it('refuses an already confirmed order', async () => {
-    arrangePayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue(
-      createPayableOrder({
-        status: OrderStatus.CONFIRMED
-      })
-    );
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      BadRequestException
-    );
-  });
-
-  it('refuses an order without payment', async () => {
-    arrangePayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue(
-      createPayableOrder({
-        payment: null
-      })
-    );
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      BadRequestException
-    );
-  });
-
-  it('refuses an already paid payment', async () => {
-    arrangePayableOrder();
-    const order = createPayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue({
-      ...order,
-      payment: order.payment
-        ? {
-            ...order.payment,
-            status: PaymentStatus.PAID
-          }
-        : null
-    });
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      BadRequestException
-    );
-  });
-
-  it('refuses a provider different from simulated', async () => {
-    arrangePayableOrder();
-    const order = createPayableOrder();
-    prismaMock.order.findUnique.mockResolvedValue({
-      ...order,
-      payment: order.payment
-        ? {
-            ...order.payment,
-            provider: 'stripe'
-          }
-        : null
-    });
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      BadRequestException
-    );
-  });
-
-  it('does not confirm the order if the payment cannot be marked paid', async () => {
-    arrangePayableOrder();
-    txMock.payment.updateMany.mockResolvedValue({ count: 0 });
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      BadRequestException
-    );
-    expect(txMock.order.updateMany).not.toHaveBeenCalled();
   });
 
   it('delegates withdrawal validation to WithdrawalValidationService', async () => {
