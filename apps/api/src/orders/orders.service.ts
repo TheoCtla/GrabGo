@@ -11,7 +11,6 @@ import {
   PaymentStatus,
   Prisma,
   Product,
-  Role,
   SlotStatus,
   SnackStatus
 } from '@prisma/client';
@@ -21,6 +20,9 @@ import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { MerchantOrdersQueryDto } from './dto/merchant-orders-query.dto';
 import { StudentOrdersQueryDto } from './dto/student-orders-query.dto';
 import { ValidateWithdrawalDto } from './dto/validate-withdrawal.dto';
+import { MerchantOrdersService } from './services/merchant-orders.service';
+import { OrderDetailService } from './services/order-detail.service';
+import { StudentOrdersService } from './services/student-orders.service';
 
 const SERVICE_FEE_CENTS = 49;
 const SIMULATED_PAYMENT_PROVIDER = 'simulated';
@@ -109,51 +111,16 @@ type MerchantOrder = Prisma.OrderGetPayload<{
   };
 }>;
 
-type MerchantOrderListItem = Prisma.OrderGetPayload<{
-  include: {
-    items: true;
-    payment: true;
-    slot: true;
-    snack: true;
-    withdrawalCode: true;
-    user: {
-      select: {
-        id: true;
-        firstName: true;
-        lastName: true;
-        email: true;
-      };
-    };
-  };
-}>;
-
 type StudentOrderListItem = CreatedOrder;
-
-type OrderDetail = Prisma.OrderGetPayload<{
-  include: {
-    items: true;
-    payment: true;
-    slot: true;
-    snack: {
-      include: {
-        merchant: true;
-      };
-    };
-    withdrawalCode: true;
-    user: {
-      select: {
-        id: true;
-        firstName: true;
-        lastName: true;
-        email: true;
-      };
-    };
-  };
-}>;
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly studentOrdersService: StudentOrdersService,
+    private readonly merchantOrdersService: MerchantOrdersService,
+    private readonly orderDetailService: OrderDetailService
+  ) {}
 
   async createOrder(studentId: string, dto: CreateOrderDto): Promise<CreatedOrder> {
     const now = new Date();
@@ -256,105 +223,21 @@ export class OrdersService {
     studentId: string,
     query: StudentOrdersQueryDto
   ): Promise<StudentOrderListItem[]> {
-    const createdAtFilter = this.buildStudentOrdersCreatedAtFilter(query);
-
-    return this.prisma.order.findMany({
-      where: {
-        userId: studentId,
-        status: query.status,
-        ...(createdAtFilter ? { createdAt: createdAtFilter } : {})
-      },
-      include: {
-        items: true,
-        payment: true,
-        slot: true,
-        snack: true,
-        withdrawalCode: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    return this.studentOrdersService.findStudentOrders(studentId, query);
   }
 
   async findMerchantOrders(
     merchantId: string,
     query: MerchantOrdersQueryDto
-  ): Promise<MerchantOrderListItem[]> {
-    return this.prisma.order.findMany({
-      where: {
-        snack: {
-          id: query.snackId,
-          merchant: {
-            userId: merchantId
-          }
-        },
-        status: query.status,
-        slot: {
-          startAt: this.buildMerchantOrdersSlotStartAtFilter(query)
-        }
-      },
-      include: {
-        items: true,
-        payment: true,
-        slot: true,
-        snack: true,
-        withdrawalCode: true,
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      },
-      orderBy: [
-        {
-          slot: {
-            startAt: 'asc'
-          }
-        },
-        {
-          createdAt: 'asc'
-        }
-      ]
-    });
+  ): ReturnType<MerchantOrdersService['findMerchantOrders']> {
+    return this.merchantOrdersService.findMerchantOrders(merchantId, query);
   }
 
-  async findOrderByIdForUser(user: AuthenticatedUser, orderId: string): Promise<OrderDetail> {
-    const order = await this.prisma.order.findUnique({
-      where: {
-        id: orderId
-      },
-      include: {
-        items: true,
-        payment: true,
-        slot: true,
-        snack: {
-          include: {
-            merchant: true
-          }
-        },
-        withdrawalCode: true,
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      }
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
-    this.ensureOrderCanBeViewedByUser(user, order);
-
-    return order;
+  async findOrderByIdForUser(
+    user: AuthenticatedUser,
+    orderId: string
+  ): ReturnType<OrderDetailService['findOrderByIdForUser']> {
+    return this.orderDetailService.findOrderByIdForUser(user, orderId);
   }
 
   async paySimulatedOrder(studentId: string, orderId: string): Promise<CreatedOrder> {
@@ -741,30 +624,6 @@ export class OrdersService {
     }
   }
 
-  private ensureOrderCanBeViewedByUser(user: AuthenticatedUser, order: OrderDetail): void {
-    if (user.role === Role.STUDENT) {
-      if (order.userId !== user.id) {
-        throw new ForbiddenException('Order does not belong to the current student');
-      }
-
-      return;
-    }
-
-    if (user.role === Role.MERCHANT) {
-      if (order.snack.merchant.userId !== user.id) {
-        throw new ForbiddenException('Snack does not belong to the current merchant');
-      }
-
-      return;
-    }
-
-    if (user.role === Role.ADMIN) {
-      return;
-    }
-
-    throw new ForbiddenException('Order cannot be viewed by the current user');
-  }
-
   private async generateWithdrawalCodeForOrder(
     tx: Prisma.TransactionClient,
     order: WithdrawalOrderData
@@ -822,51 +681,6 @@ export class OrdersService {
 
   private getWithdrawalExpiresAt(slotEndAt: Date): Date {
     return new Date(slotEndAt.getTime() + WITHDRAWAL_EXPIRATION_DELAY_MS);
-  }
-
-  private buildStudentOrdersCreatedAtFilter(
-    query: StudentOrdersQueryDto
-  ): Prisma.DateTimeFilter | undefined {
-    const from = query.from ? new Date(query.from) : undefined;
-    const to = query.to ? new Date(query.to) : undefined;
-
-    if (from && to && from >= to) {
-      throw new BadRequestException('from must be before to');
-    }
-
-    if (!from && !to) {
-      return undefined;
-    }
-
-    return {
-      ...(from ? { gte: from } : {}),
-      ...(to ? { lt: to } : {})
-    };
-  }
-
-  private buildMerchantOrdersSlotStartAtFilter(
-    query: MerchantOrdersQueryDto
-  ): Prisma.DateTimeFilter {
-    const from = query.from ? new Date(query.from) : undefined;
-    const to = query.to ? new Date(query.to) : undefined;
-
-    if (from && to && from >= to) {
-      throw new BadRequestException('from must be before to');
-    }
-
-    if (!from && !to) {
-      const serviceDay = this.getServiceDayBounds(new Date());
-
-      return {
-        gte: serviceDay.start,
-        lt: serviceDay.end
-      };
-    }
-
-    return {
-      ...(from ? { gte: from } : {}),
-      ...(to ? { lt: to } : {})
-    };
   }
 
   private getServiceDayBounds(date: Date): { start: Date; end: Date } {
