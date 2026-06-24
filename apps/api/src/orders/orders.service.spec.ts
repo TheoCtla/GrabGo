@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  InternalServerErrorException,
-  NotFoundException
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   OrderStatus,
@@ -27,6 +22,7 @@ import { MerchantOrdersService } from './services/merchant-orders.service';
 import { MerchantOrderStatusService } from './services/merchant-order-status.service';
 import { OrderDetailService } from './services/order-detail.service';
 import { StudentOrdersService } from './services/student-orders.service';
+import { WithdrawalCodeOrderData, WithdrawalCodeService } from './services/withdrawal-code.service';
 
 type SlotWithSnack = Prisma.SlotGetPayload<{
   include: { snack: true };
@@ -128,6 +124,13 @@ type OrderDetailServiceMock = {
 
 type MerchantOrderStatusServiceMock = {
   updateMerchantOrderStatus: jest.Mock<Promise<unknown>, [string, string, OrderStatus]>;
+};
+
+type WithdrawalCodeServiceMock = {
+  generateWithdrawalCodeForOrder: jest.Mock<
+    Promise<WithdrawalCode>,
+    [Prisma.TransactionClient, WithdrawalCodeOrderData]
+  >;
 };
 
 describe('OrdersService', () => {
@@ -232,6 +235,12 @@ describe('OrdersService', () => {
   };
   const merchantOrderStatusServiceMock: MerchantOrderStatusServiceMock = {
     updateMerchantOrderStatus: jest.fn<Promise<unknown>, [string, string, OrderStatus]>()
+  };
+  const withdrawalCodeServiceMock: WithdrawalCodeServiceMock = {
+    generateWithdrawalCodeForOrder: jest.fn<
+      Promise<WithdrawalCode>,
+      [Prisma.TransactionClient, WithdrawalCodeOrderData]
+    >()
   };
 
   function createSlot(overrides: Partial<SlotWithSnack> = {}): SlotWithSnack {
@@ -451,9 +460,7 @@ describe('OrdersService', () => {
     prismaMock.order.findUnique.mockResolvedValue(createPayableOrder());
     txMock.payment.updateMany.mockResolvedValue({ count: 1 });
     txMock.order.updateMany.mockResolvedValue({ count: 1 });
-    txMock.withdrawalCode.findUnique.mockResolvedValue(null);
-    txMock.withdrawalCode.findFirst.mockResolvedValue(null);
-    txMock.withdrawalCode.create.mockResolvedValue(withdrawalCode);
+    withdrawalCodeServiceMock.generateWithdrawalCodeForOrder.mockResolvedValue(withdrawalCode);
     txMock.order.findUnique.mockResolvedValue(paidOrder);
     prismaMock.$transaction.mockImplementation((callback) => callback(txMock));
 
@@ -506,6 +513,10 @@ describe('OrdersService', () => {
         {
           provide: MerchantOrderStatusService,
           useValue: merchantOrderStatusServiceMock
+        },
+        {
+          provide: WithdrawalCodeService,
+          useValue: withdrawalCodeServiceMock
         }
       ]
     }).compile();
@@ -788,120 +799,25 @@ describe('OrdersService', () => {
     await expect(service.paySimulatedOrder(student.id, 'order-id')).resolves.toEqual(paidOrder);
   });
 
-  it('creates a withdrawal code after confirmed payment', async () => {
+  it('delegates withdrawal code generation during simulated payment', async () => {
     arrangePayableOrder();
 
     await service.paySimulatedOrder(student.id, 'order-id');
-    const call = txMock.withdrawalCode.create.mock.calls[0];
+    const call = withdrawalCodeServiceMock.generateWithdrawalCodeForOrder.mock.calls[0];
 
     if (!call) {
-      throw new Error('Expected withdrawalCode.create to be called');
+      throw new Error('Expected generateWithdrawalCodeForOrder to be called');
     }
 
-    expect(call[0].data.orderId).toBe('order-id');
-  });
-
-  it('generates an exactly 4 digit withdrawal code', async () => {
-    arrangePayableOrder();
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-    const call = txMock.withdrawalCode.create.mock.calls[0];
-
-    if (!call) {
-      throw new Error('Expected withdrawalCode.create to be called');
-    }
-
-    expect(call[0].data.code).toMatch(/^\d{4}$/);
-  });
-
-  it('generates a qrToken without using Math.random', async () => {
-    const mathRandomSpy = jest.spyOn(Math, 'random');
-    arrangePayableOrder();
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-    const call = txMock.withdrawalCode.create.mock.calls[0];
-
-    if (!call) {
-      throw new Error('Expected withdrawalCode.create to be called');
-    }
-
-    expect(call[0].data.qrToken).toEqual(expect.any(String));
-    expect(mathRandomSpy).not.toHaveBeenCalled();
-    mathRandomSpy.mockRestore();
-  });
-
-  it('does not create a second withdrawal code if one already exists', async () => {
-    const existingWithdrawalCode = createWithdrawalCode({
-      id: 'existing-withdrawal-code-id'
-    });
-    arrangePayableOrder();
-    txMock.withdrawalCode.findUnique.mockResolvedValue(existingWithdrawalCode);
-    txMock.order.findUnique.mockResolvedValue(
-      createOrder({
-        status: OrderStatus.CONFIRMED,
-        withdrawalCode: existingWithdrawalCode
-      })
-    );
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).resolves.toMatchObject({
-      withdrawalCode: existingWithdrawalCode
-    });
-    expect(txMock.withdrawalCode.create).not.toHaveBeenCalled();
-  });
-
-  it('retries when an active withdrawal code collision exists for the same snack and service day', async () => {
-    arrangePayableOrder();
-    txMock.withdrawalCode.findFirst
-      .mockResolvedValueOnce(createWithdrawalCode({ id: 'collision-id' }))
-      .mockResolvedValueOnce(null);
-
-    await service.paySimulatedOrder(student.id, 'order-id');
-    const call = txMock.withdrawalCode.findFirst.mock.calls[0];
-    const serviceDayStart = new Date('2026-01-01T12:00:00.000Z');
-    serviceDayStart.setHours(0, 0, 0, 0);
-    const serviceDayEnd = new Date(serviceDayStart);
-    serviceDayEnd.setDate(serviceDayEnd.getDate() + 1);
-
-    if (!call) {
-      throw new Error('Expected withdrawalCode.findFirst to be called');
-    }
-
-    expect(txMock.withdrawalCode.findFirst).toHaveBeenCalledTimes(2);
-    expect(call[0].where).toMatchObject({
-      order: {
-        snackId: 'snack-id',
-        slot: {
-          startAt: {
-            gte: serviceDayStart,
-            lt: serviceDayEnd
-          }
-        }
+    expect(call[0]).toBe(txMock);
+    expect(call[1]).toMatchObject({
+      id: 'order-id',
+      snackId: 'snack-id',
+      slot: {
+        startAt: new Date('2026-01-01T12:00:00.000Z'),
+        endAt: new Date('2026-01-01T12:15:00.000Z')
       }
     });
-    expect(call[0].where).toMatchObject({
-      order: {
-        status: {
-          in: [
-            OrderStatus.CONFIRMED,
-            OrderStatus.WAITING_PULL_CONFIRMATION,
-            OrderStatus.PREPARING,
-            OrderStatus.READY,
-            OrderStatus.LATE
-          ]
-        }
-      }
-    });
-  });
-
-  it('fails cleanly after too many active withdrawal code collisions', async () => {
-    arrangePayableOrder();
-    txMock.withdrawalCode.findFirst.mockResolvedValue(createWithdrawalCode({ id: 'collision-id' }));
-
-    await expect(service.paySimulatedOrder(student.id, 'order-id')).rejects.toBeInstanceOf(
-      InternalServerErrorException
-    );
-    expect(txMock.withdrawalCode.findFirst).toHaveBeenCalledTimes(20);
-    expect(txMock.withdrawalCode.create).not.toHaveBeenCalled();
   });
 
   it('returns the paid order with its withdrawal code', async () => {

@@ -2,10 +2,8 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException
 } from '@nestjs/common';
-import { randomInt, randomUUID } from 'crypto';
 import {
   OrderStatus,
   PaymentStatus,
@@ -24,11 +22,10 @@ import { MerchantOrdersService } from './services/merchant-orders.service';
 import { MerchantOrderStatusService } from './services/merchant-order-status.service';
 import { OrderDetailService } from './services/order-detail.service';
 import { StudentOrdersService } from './services/student-orders.service';
+import { WithdrawalCodeService } from './services/withdrawal-code.service';
 
 const SERVICE_FEE_CENTS = 49;
 const SIMULATED_PAYMENT_PROVIDER = 'simulated';
-const WITHDRAWAL_CODE_ATTEMPTS = 20;
-const WITHDRAWAL_EXPIRATION_DELAY_MS = 2 * 60 * 60 * 1000;
 const ACTIVE_WITHDRAWAL_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.CONFIRMED,
   OrderStatus.WAITING_PULL_CONFIRMATION,
@@ -59,15 +56,6 @@ type PayableOrder = Prisma.OrderGetPayload<{
   };
 }>;
 
-type WithdrawalOrderData = {
-  id: string;
-  snackId: string;
-  slot: {
-    startAt: Date;
-    endAt: Date;
-  };
-};
-
 type WithdrawalCodeForValidation = Prisma.WithdrawalCodeGetPayload<{
   include: {
     order: {
@@ -92,7 +80,8 @@ export class OrdersService {
     private readonly studentOrdersService: StudentOrdersService,
     private readonly merchantOrdersService: MerchantOrdersService,
     private readonly orderDetailService: OrderDetailService,
-    private readonly merchantOrderStatusService: MerchantOrderStatusService
+    private readonly merchantOrderStatusService: MerchantOrderStatusService,
+    private readonly withdrawalCodeService: WithdrawalCodeService
   ) {}
 
   async createOrder(studentId: string, dto: CreateOrderDto): Promise<CreatedOrder> {
@@ -269,7 +258,7 @@ export class OrdersService {
         throw new BadRequestException('Order cannot be confirmed');
       }
 
-      await this.generateWithdrawalCodeForOrder(tx, order);
+      await this.withdrawalCodeService.generateWithdrawalCodeForOrder(tx, order);
 
       const updatedOrder = await tx.order.findUnique({
         where: { id: orderId },
@@ -499,65 +488,6 @@ export class OrdersService {
     if (!ACTIVE_WITHDRAWAL_ORDER_STATUSES.includes(withdrawalCode.order.status)) {
       throw new BadRequestException('Order is not validable');
     }
-  }
-
-  private async generateWithdrawalCodeForOrder(
-    tx: Prisma.TransactionClient,
-    order: WithdrawalOrderData
-  ) {
-    const existingWithdrawalCode = await tx.withdrawalCode.findUnique({
-      where: {
-        orderId: order.id
-      }
-    });
-
-    if (existingWithdrawalCode) {
-      return existingWithdrawalCode;
-    }
-
-    const serviceDay = this.getServiceDayBounds(order.slot.startAt);
-
-    for (let attempt = 0; attempt < WITHDRAWAL_CODE_ATTEMPTS; attempt += 1) {
-      const code = this.generateFourDigitWithdrawalCode();
-      const activeCollision = await tx.withdrawalCode.findFirst({
-        where: {
-          code,
-          order: {
-            snackId: order.snackId,
-            status: {
-              in: ACTIVE_WITHDRAWAL_ORDER_STATUSES
-            },
-            slot: {
-              startAt: {
-                gte: serviceDay.start,
-                lt: serviceDay.end
-              }
-            }
-          }
-        }
-      });
-
-      if (!activeCollision) {
-        return tx.withdrawalCode.create({
-          data: {
-            orderId: order.id,
-            code,
-            qrToken: randomUUID(),
-            expiresAt: this.getWithdrawalExpiresAt(order.slot.endAt)
-          }
-        });
-      }
-    }
-
-    throw new InternalServerErrorException('Unable to generate a withdrawal code');
-  }
-
-  private generateFourDigitWithdrawalCode(): string {
-    return randomInt(0, 10_000).toString().padStart(4, '0');
-  }
-
-  private getWithdrawalExpiresAt(slotEndAt: Date): Date {
-    return new Date(slotEndAt.getTime() + WITHDRAWAL_EXPIRATION_DELAY_MS);
   }
 
   private getServiceDayBounds(date: Date): { start: Date; end: Date } {

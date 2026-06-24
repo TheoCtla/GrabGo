@@ -6,6 +6,7 @@ import { MerchantOrdersService } from './services/merchant-orders.service';
 import { MerchantOrderStatusService } from './services/merchant-order-status.service';
 import { OrderDetailService } from './services/order-detail.service';
 import { StudentOrdersService } from './services/student-orders.service';
+import { WithdrawalCodeService } from './services/withdrawal-code.service';
 
 @Module({
   imports: [PrismaModule],
@@ -15,7 +16,8 @@ import { StudentOrdersService } from './services/student-orders.service';
     StudentOrdersService,
     MerchantOrdersService,
     OrderDetailService,
-    MerchantOrderStatusService
+    MerchantOrderStatusService,
+    WithdrawalCodeService
   ]
 })
 export class OrdersModule {}
