@@ -23,16 +23,10 @@ import { MerchantOrderStatusService } from './services/merchant-order-status.ser
 import { OrderDetailService } from './services/order-detail.service';
 import { StudentOrdersService } from './services/student-orders.service';
 import { WithdrawalCodeService } from './services/withdrawal-code.service';
+import { WithdrawalValidationService } from './services/withdrawal-validation.service';
 
 const SERVICE_FEE_CENTS = 49;
 const SIMULATED_PAYMENT_PROVIDER = 'simulated';
-const ACTIVE_WITHDRAWAL_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.CONFIRMED,
-  OrderStatus.WAITING_PULL_CONFIRMATION,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.LATE
-];
 
 type SlotWithSnack = Prisma.SlotGetPayload<{
   include: { snack: true };
@@ -56,21 +50,6 @@ type PayableOrder = Prisma.OrderGetPayload<{
   };
 }>;
 
-type WithdrawalCodeForValidation = Prisma.WithdrawalCodeGetPayload<{
-  include: {
-    order: {
-      include: {
-        slot: true;
-        snack: {
-          include: {
-            merchant: true;
-          };
-        };
-      };
-    };
-  };
-}>;
-
 type StudentOrderListItem = CreatedOrder;
 
 @Injectable()
@@ -81,7 +60,8 @@ export class OrdersService {
     private readonly merchantOrdersService: MerchantOrdersService,
     private readonly orderDetailService: OrderDetailService,
     private readonly merchantOrderStatusService: MerchantOrderStatusService,
-    private readonly withdrawalCodeService: WithdrawalCodeService
+    private readonly withdrawalCodeService: WithdrawalCodeService,
+    private readonly withdrawalValidationService: WithdrawalValidationService
   ) {}
 
   async createOrder(studentId: string, dto: CreateOrderDto): Promise<CreatedOrder> {
@@ -280,69 +260,7 @@ export class OrdersService {
   }
 
   async validateWithdrawal(merchantId: string, dto: ValidateWithdrawalDto): Promise<CreatedOrder> {
-    const now = new Date();
-
-    this.ensureWithdrawalLookupIsValid(dto);
-
-    return this.prisma.$transaction(async (tx) => {
-      const withdrawalCode = await this.findWithdrawalCodeForValidation(tx, dto, now);
-
-      if (!withdrawalCode) {
-        throw new NotFoundException('Withdrawal code not found');
-      }
-
-      this.ensureWithdrawalCanBeValidated(withdrawalCode, merchantId, now);
-
-      const withdrawalUpdate = await tx.withdrawalCode.updateMany({
-        where: {
-          id: withdrawalCode.id,
-          usedAt: null
-        },
-        data: {
-          usedAt: now
-        }
-      });
-
-      if (withdrawalUpdate.count !== 1) {
-        throw new BadRequestException('Withdrawal code already used');
-      }
-
-      const orderUpdate = await tx.order.updateMany({
-        where: {
-          id: withdrawalCode.orderId,
-          status: {
-            in: ACTIVE_WITHDRAWAL_ORDER_STATUSES
-          }
-        },
-        data: {
-          status: OrderStatus.COMPLETED,
-          pickupConfirmedAt: now
-        }
-      });
-
-      if (orderUpdate.count !== 1) {
-        throw new BadRequestException('Order is not validable');
-      }
-
-      const updatedOrder = await tx.order.findUnique({
-        where: {
-          id: withdrawalCode.orderId
-        },
-        include: {
-          items: true,
-          payment: true,
-          slot: true,
-          snack: true,
-          withdrawalCode: true
-        }
-      });
-
-      if (!updatedOrder) {
-        throw new NotFoundException('Order not found');
-      }
-
-      return updatedOrder;
-    });
+    return this.withdrawalValidationService.validateWithdrawal(merchantId, dto);
   }
 
   async updateMerchantOrderStatus(
@@ -403,101 +321,6 @@ export class OrdersService {
     if (order.payment.status !== PaymentStatus.PENDING) {
       throw new BadRequestException('Payment is not pending');
     }
-  }
-
-  private ensureWithdrawalLookupIsValid(dto: ValidateWithdrawalDto): void {
-    if (!dto.qrToken && !dto.code) {
-      throw new BadRequestException('qrToken or code is required');
-    }
-
-    if (!dto.qrToken && dto.code && !dto.snackId) {
-      throw new BadRequestException('snackId is required when validating with code');
-    }
-  }
-
-  private async findWithdrawalCodeForValidation(
-    tx: Prisma.TransactionClient,
-    dto: ValidateWithdrawalDto,
-    now: Date
-  ): Promise<WithdrawalCodeForValidation | null> {
-    const include = {
-      order: {
-        include: {
-          slot: true,
-          snack: {
-            include: {
-              merchant: true
-            }
-          }
-        }
-      }
-    } satisfies Prisma.WithdrawalCodeInclude;
-
-    if (dto.qrToken) {
-      return tx.withdrawalCode.findUnique({
-        where: {
-          qrToken: dto.qrToken
-        },
-        include
-      });
-    }
-
-    const serviceDay = this.getServiceDayBounds(now);
-
-    return tx.withdrawalCode.findFirst({
-      where: {
-        code: dto.code,
-        usedAt: null,
-        expiresAt: {
-          gt: now
-        },
-        order: {
-          snackId: dto.snackId,
-          status: {
-            in: ACTIVE_WITHDRAWAL_ORDER_STATUSES
-          },
-          slot: {
-            startAt: {
-              gte: serviceDay.start,
-              lt: serviceDay.end
-            }
-          }
-        }
-      },
-      include
-    });
-  }
-
-  private ensureWithdrawalCanBeValidated(
-    withdrawalCode: WithdrawalCodeForValidation,
-    merchantId: string,
-    now: Date
-  ): void {
-    if (withdrawalCode.usedAt) {
-      throw new BadRequestException('Withdrawal code already used');
-    }
-
-    if (withdrawalCode.expiresAt && withdrawalCode.expiresAt <= now) {
-      throw new BadRequestException('Withdrawal code expired');
-    }
-
-    if (withdrawalCode.order.snack.merchant.userId !== merchantId) {
-      throw new ForbiddenException('Snack does not belong to the current merchant');
-    }
-
-    if (!ACTIVE_WITHDRAWAL_ORDER_STATUSES.includes(withdrawalCode.order.status)) {
-      throw new BadRequestException('Order is not validable');
-    }
-  }
-
-  private getServiceDayBounds(date: Date): { start: Date; end: Date } {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-
-    return { start, end };
   }
 
   private async findAndValidateProducts(dto: CreateOrderDto): Promise<Product[]> {
