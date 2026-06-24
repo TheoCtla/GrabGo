@@ -6,15 +6,8 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ACTIVE_WITHDRAWAL_ORDER_STATUSES } from '../constants/order-status.constants';
 import { ValidateWithdrawalDto } from '../dto/validate-withdrawal.dto';
-
-const ACTIVE_WITHDRAWAL_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.CONFIRMED,
-  OrderStatus.WAITING_PULL_CONFIRMATION,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.LATE
-];
 
 export type WithdrawalValidatedOrder = Prisma.OrderGetPayload<{
   include: {

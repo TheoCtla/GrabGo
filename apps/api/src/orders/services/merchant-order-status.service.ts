@@ -6,14 +6,7 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-
-const ACTIVE_WITHDRAWAL_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.CONFIRMED,
-  OrderStatus.WAITING_PULL_CONFIRMATION,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.LATE
-];
+import { ACTIVE_WITHDRAWAL_ORDER_STATUSES } from '../constants/order-status.constants';
 const TERMINAL_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.COMPLETED,
   OrderStatus.EXPIRED,

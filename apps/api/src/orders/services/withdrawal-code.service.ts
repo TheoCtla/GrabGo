@@ -1,16 +1,10 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { OrderStatus, Prisma, WithdrawalCode } from '@prisma/client';
+import { Prisma, WithdrawalCode } from '@prisma/client';
 import { randomInt, randomUUID } from 'crypto';
+import { ACTIVE_WITHDRAWAL_ORDER_STATUSES } from '../constants/order-status.constants';
 
 const WITHDRAWAL_CODE_ATTEMPTS = 20;
 const WITHDRAWAL_EXPIRATION_DELAY_MS = 2 * 60 * 60 * 1000;
-const ACTIVE_WITHDRAWAL_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.CONFIRMED,
-  OrderStatus.WAITING_PULL_CONFIRMATION,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.LATE
-];
 
 export type WithdrawalCodeOrderData = {
   id: string;
