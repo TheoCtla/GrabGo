@@ -6,9 +6,8 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SIMULATED_PAYMENT_PROVIDER } from '../constants/order-payment.constants';
 import { WithdrawalCodeService } from './withdrawal-code.service';
-
-export const SIMULATED_PAYMENT_PROVIDER = 'simulated';
 
 type PayableOrder = Prisma.OrderGetPayload<{
   include: {
