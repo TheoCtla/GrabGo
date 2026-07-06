@@ -13,7 +13,9 @@ type PrismaMock = {
 describe('MerchantOrdersService', () => {
   let service: MerchantOrdersService;
   const now = new Date('2026-01-01T10:00:00.000Z');
-  const merchantId = 'merchant-user-id';
+  const merchantUserId = 'merchant-user-id';
+  const merchantRecordId = 'merchant-record-id';
+  const otherMerchantUserId = 'other-merchant-user-id';
   const prismaMock: PrismaMock = {
     order: {
       findMany: jest.fn<Promise<MerchantOrderListItem[]>, [Prisma.OrderFindManyArgs]>()
@@ -61,7 +63,7 @@ describe('MerchantOrdersService', () => {
       },
       snack: {
         id: 'snack-id',
-        merchantId: 'merchant-id',
+        merchantId: merchantRecordId,
         campusId: 'campus-id',
         name: 'Snack Campus',
         description: null,
@@ -94,6 +96,16 @@ describe('MerchantOrdersService', () => {
     return call[0];
   }
 
+  function getDefaultStatusFilter(): Prisma.EnumOrderStatusFilter<'Order'> {
+    const statusFilter = getFindManyArgs().where?.status;
+
+    if (!statusFilter || typeof statusFilter === 'string') {
+      throw new Error('Expected a default status filter object');
+    }
+
+    return statusFilter;
+  }
+
   beforeEach(async () => {
     jest.useFakeTimers().setSystemTime(now);
     jest.resetAllMocks();
@@ -119,19 +131,103 @@ describe('MerchantOrdersService', () => {
     const orders = [createOrder()];
     prismaMock.order.findMany.mockResolvedValue(orders);
 
-    await expect(service.findMerchantOrders(merchantId, {})).resolves.toEqual(orders);
+    await expect(service.findMerchantOrders(merchantUserId, {})).resolves.toEqual(orders);
   });
 
-  it('filters merchant orders by snackId', async () => {
+  it('lets a merchant see a confirmed order from their snack', async () => {
+    const confirmedOrder = createOrder({
+      status: OrderStatus.CONFIRMED
+    });
+    prismaMock.order.findMany.mockResolvedValue([confirmedOrder]);
+
+    await expect(service.findMerchantOrders(merchantUserId, {})).resolves.toEqual([confirmedOrder]);
+    expect(getDefaultStatusFilter().in).toContain(OrderStatus.CONFIRMED);
+  });
+
+  it('lets a merchant see a waiting pull confirmation order from their snack', async () => {
+    const waitingOrder = createOrder({
+      status: OrderStatus.WAITING_PULL_CONFIRMATION
+    });
+    prismaMock.order.findMany.mockResolvedValue([waitingOrder]);
+
+    await expect(service.findMerchantOrders(merchantUserId, {})).resolves.toEqual([waitingOrder]);
+    expect(getDefaultStatusFilter().in).toContain(OrderStatus.WAITING_PULL_CONFIRMATION);
+  });
+
+  it('lets a merchant see orders from snacks owned by their user account', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
-    await service.findMerchantOrders(merchantId, { snackId: 'snack-id' });
+    await service.findMerchantOrders(merchantUserId, {});
+
+    expect(getFindManyArgs().where).toMatchObject({
+      snack: {
+        merchant: {
+          is: {
+            userId: merchantUserId
+          }
+        }
+      }
+    });
+  });
+
+  it('does not filter merchant orders with snack.merchantId equal to the user id', async () => {
+    prismaMock.order.findMany.mockResolvedValue([createOrder()]);
+
+    await service.findMerchantOrders(merchantUserId, {});
+
+    expect(getFindManyArgs().where).toMatchObject({
+      snack: {
+        merchant: {
+          is: {
+            userId: merchantUserId
+          }
+        }
+      }
+    });
+    expect(getFindManyArgs().where).not.toMatchObject({
+      snack: {
+        merchantId: merchantUserId
+      }
+    });
+  });
+
+  it('does not include orders from another merchant in the generated filter', async () => {
+    prismaMock.order.findMany.mockResolvedValue([]);
+
+    await service.findMerchantOrders(merchantUserId, {});
+
+    expect(getFindManyArgs().where).toMatchObject({
+      snack: {
+        merchant: {
+          is: {
+            userId: merchantUserId
+          }
+        }
+      }
+    });
+    expect(getFindManyArgs().where).not.toMatchObject({
+      snack: {
+        merchant: {
+          is: {
+            userId: otherMerchantUserId
+          }
+        }
+      }
+    });
+  });
+
+  it('filters merchant orders by snackId while keeping merchant ownership', async () => {
+    prismaMock.order.findMany.mockResolvedValue([createOrder()]);
+
+    await service.findMerchantOrders(merchantUserId, { snackId: 'snack-id' });
 
     expect(getFindManyArgs().where).toMatchObject({
       snack: {
         id: 'snack-id',
         merchant: {
-          userId: merchantId
+          is: {
+            userId: merchantUserId
+          }
         }
       }
     });
@@ -140,10 +236,12 @@ describe('MerchantOrdersService', () => {
   it('filters merchant orders by status', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
-    await service.findMerchantOrders(merchantId, { status: OrderStatus.READY });
+    await service.findMerchantOrders(merchantUserId, { status: OrderStatus.READY });
 
     expect(getFindManyArgs().where).toMatchObject({
-      status: OrderStatus.READY
+      status: {
+        equals: OrderStatus.READY
+      }
     });
   });
 
@@ -152,7 +250,7 @@ describe('MerchantOrdersService', () => {
     const from = '2026-01-01T08:00:00.000Z';
     const to = '2026-01-01T13:00:00.000Z';
 
-    await service.findMerchantOrders(merchantId, { from, to });
+    await service.findMerchantOrders(merchantUserId, { from, to });
 
     expect(getFindManyArgs().where).toMatchObject({
       slot: {
@@ -164,29 +262,18 @@ describe('MerchantOrdersService', () => {
     });
   });
 
-  it('applies the current service day by default when from and to are absent', async () => {
+  it('does not apply a default slot date filter when from and to are absent', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
-    const serviceDayStart = new Date(now);
-    serviceDayStart.setHours(0, 0, 0, 0);
-    const serviceDayEnd = new Date(serviceDayStart);
-    serviceDayEnd.setDate(serviceDayEnd.getDate() + 1);
 
-    await service.findMerchantOrders(merchantId, {});
+    await service.findMerchantOrders(merchantUserId, {});
 
-    expect(getFindManyArgs().where).toMatchObject({
-      slot: {
-        startAt: {
-          gte: serviceDayStart,
-          lt: serviceDayEnd
-        }
-      }
-    });
+    expect(getFindManyArgs().where).not.toHaveProperty('slot');
   });
 
   it('sorts merchant orders by slot start then creation date', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
-    await service.findMerchantOrders(merchantId, {});
+    await service.findMerchantOrders(merchantUserId, {});
 
     expect(getFindManyArgs().orderBy).toEqual([
       {
@@ -200,15 +287,61 @@ describe('MerchantOrdersService', () => {
     ]);
   });
 
+  it('does not return an empty list when an order exists for the merchant snack', async () => {
+    prismaMock.order.findMany.mockResolvedValue([createOrder()]);
+
+    await expect(service.findMerchantOrders(merchantUserId, {})).resolves.toHaveLength(1);
+  });
+
+  it('includes an order visible through detail in the merchant list filters', async () => {
+    const orderVisibleThroughDetail = createOrder({
+      id: 'order-visible-through-detail',
+      snackId: 'snack-id',
+      status: OrderStatus.WAITING_PULL_CONFIRMATION,
+      slot: {
+        ...createOrder().slot,
+        startAt: new Date('2025-12-31T12:00:00.000Z'),
+        endAt: new Date('2025-12-31T12:15:00.000Z')
+      }
+    });
+    prismaMock.order.findMany.mockResolvedValue([orderVisibleThroughDetail]);
+
+    await expect(
+      service.findMerchantOrders(merchantUserId, { snackId: 'snack-id' })
+    ).resolves.toEqual([orderVisibleThroughDetail]);
+    expect(getFindManyArgs().where).toMatchObject({
+      snack: {
+        id: 'snack-id',
+        merchant: {
+          is: {
+            userId: merchantUserId
+          }
+        }
+      },
+      status: {
+        in: [
+          OrderStatus.CONFIRMED,
+          OrderStatus.WAITING_PULL_CONFIRMATION,
+          OrderStatus.PREPARING,
+          OrderStatus.READY,
+          OrderStatus.LATE
+        ]
+      }
+    });
+    expect(getFindManyArgs().where).not.toHaveProperty('slot');
+  });
+
   it('always filters merchant orders by snack merchant user id', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
-    await service.findMerchantOrders(merchantId, {});
+    await service.findMerchantOrders(merchantUserId, {});
 
     expect(getFindManyArgs().where).toMatchObject({
       snack: {
         merchant: {
-          userId: merchantId
+          is: {
+            userId: merchantUserId
+          }
         }
       }
     });
@@ -217,13 +350,13 @@ describe('MerchantOrdersService', () => {
   it('returns an empty list when the connected merchant has no matching orders', async () => {
     prismaMock.order.findMany.mockResolvedValue([]);
 
-    await expect(service.findMerchantOrders(merchantId, {})).resolves.toEqual([]);
+    await expect(service.findMerchantOrders(merchantUserId, {})).resolves.toEqual([]);
   });
 
   it('selects a minimal student user without passwordHash for merchant orders', async () => {
     prismaMock.order.findMany.mockResolvedValue([createOrder()]);
 
-    const [order] = await service.findMerchantOrders(merchantId, {});
+    const [order] = await service.findMerchantOrders(merchantUserId, {});
 
     expect(order?.user).not.toHaveProperty('passwordHash');
     expect(getFindManyArgs().include).toMatchObject({
@@ -240,7 +373,7 @@ describe('MerchantOrdersService', () => {
 
   it('refuses merchant order date filters when from is after to', async () => {
     await expect(
-      service.findMerchantOrders(merchantId, {
+      service.findMerchantOrders(merchantUserId, {
         from: '2026-01-01T13:00:00.000Z',
         to: '2026-01-01T08:00:00.000Z'
       })

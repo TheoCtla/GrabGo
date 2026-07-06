@@ -1,7 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MerchantOrdersQueryDto } from '../dto/merchant-orders-query.dto';
+
+const DEFAULT_MERCHANT_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.CONFIRMED,
+  OrderStatus.WAITING_PULL_CONFIRMATION,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.LATE
+];
 
 export type MerchantOrderListItem = Prisma.OrderGetPayload<{
   include: {
@@ -26,21 +34,29 @@ export class MerchantOrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMerchantOrders(
-    merchantId: string,
+    merchantUserId: string,
     query: MerchantOrdersQueryDto
   ): Promise<MerchantOrderListItem[]> {
+    const slotStartAtFilter = this.buildSlotStartAtFilter(query);
+
     return this.prisma.order.findMany({
       where: {
         snack: {
           id: query.snackId,
           merchant: {
-            userId: merchantId
+            is: {
+              userId: merchantUserId
+            }
           }
         },
-        status: query.status,
-        slot: {
-          startAt: this.buildSlotStartAtFilter(query)
-        }
+        status: this.buildStatusFilter(query),
+        ...(slotStartAtFilter
+          ? {
+              slot: {
+                startAt: slotStartAtFilter
+              }
+            }
+          : {})
       },
       include: {
         items: true,
@@ -70,7 +86,19 @@ export class MerchantOrdersService {
     });
   }
 
-  private buildSlotStartAtFilter(query: MerchantOrdersQueryDto): Prisma.DateTimeFilter {
+  private buildStatusFilter(query: MerchantOrdersQueryDto): Prisma.EnumOrderStatusFilter {
+    if (query.status) {
+      return {
+        equals: query.status
+      };
+    }
+
+    return {
+      in: DEFAULT_MERCHANT_ORDER_STATUSES
+    };
+  }
+
+  private buildSlotStartAtFilter(query: MerchantOrdersQueryDto): Prisma.DateTimeFilter | undefined {
     const from = query.from ? new Date(query.from) : undefined;
     const to = query.to ? new Date(query.to) : undefined;
 
@@ -79,27 +107,12 @@ export class MerchantOrdersService {
     }
 
     if (!from && !to) {
-      const serviceDay = this.getServiceDayBounds(new Date());
-
-      return {
-        gte: serviceDay.start,
-        lt: serviceDay.end
-      };
+      return undefined;
     }
 
     return {
       ...(from ? { gte: from } : {}),
       ...(to ? { lt: to } : {})
     };
-  }
-
-  private getServiceDayBounds(date: Date): { start: Date; end: Date } {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-
-    return { start, end };
   }
 }
