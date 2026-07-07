@@ -17,5 +17,24 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: grabgo-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grabgo}:${POSTGRES_PASSWORD:-grabgo_password}@postgres:5432/${POSTGRES_DB:-grabgo}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-replace_me_with_a_long_random_secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+
 volumes:
   postgres_data:

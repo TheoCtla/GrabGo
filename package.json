@@ -11,6 +11,10 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run start:dev -w apps/api",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps",
+    "docker:up": "docker compose up --build",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\" && npm run prisma:format -w apps/api",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "lint": "eslint .",
