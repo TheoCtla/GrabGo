@@ -3,6 +3,8 @@ dist/
 coverage/
 .env
 apps/api/.env
+apps/**/.env
+apps/**/.expo/
 .env.local
 .env.*.local
 *.log

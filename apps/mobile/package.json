@@ -2,5 +2,24 @@
   "name": "@grabgo/mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "Application etudiant GrabGo - a initialiser dans une prochaine etape."
+  "description": "Application etudiant GrabGo.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "dev": "expo start",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
+    "expo": "^57.0.7",
+    "expo-status-bar": "^57.0.1",
+    "react": "^19.2.3",
+    "react-native": "^0.86.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  }
 }
