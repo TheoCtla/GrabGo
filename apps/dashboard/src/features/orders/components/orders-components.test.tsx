@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { MerchantOrder } from '../types';
 import { OrderStatusActions } from './OrderStatusActions';
+import { OrdersSummary } from './OrdersSummary';
 import { OrdersTable } from './OrdersTable';
+import { OrdersToolbar } from './OrdersToolbar';
 import { WithdrawalValidationForm } from './WithdrawalValidationForm';
 
 function createMerchantOrder(overrides: Partial<MerchantOrder> = {}): MerchantOrder {
@@ -83,9 +85,50 @@ describe('orders dashboard components', () => {
       />
     );
 
-    expect(screen.getByRole('cell', { name: 'Ada' })).toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Snack Campus' })).toBeInTheDocument();
     expect(screen.getByText('Confirmée')).toBeInTheDocument();
+  });
+
+  it('renders the orders summary counters', () => {
+    render(
+      <OrdersSummary
+        counts={{
+          total: 5,
+          ready: 2,
+          preparing: 1,
+          waiting: 2
+        }}
+      />
+    );
+
+    expect(screen.getByText('Total actionnable')).toBeInTheDocument();
+    expect(screen.getByText('Prêtes')).toBeInTheDocument();
+    expect(screen.getByText('En préparation')).toBeInTheDocument();
+  });
+
+  it('updates toolbar search and status filters', async () => {
+    const user = userEvent.setup();
+    const onSearchChange = vi.fn();
+    const onStatusChange = vi.fn();
+
+    render(
+      <OrdersToolbar
+        resultCount={0}
+        search=""
+        status="ALL"
+        totalCount={3}
+        onSearchChange={onSearchChange}
+        onStatusChange={onStatusChange}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Recherche commande'), 'Ada');
+    await user.selectOptions(screen.getByLabelText('Statut'), 'READY');
+
+    expect(onSearchChange).toHaveBeenCalled();
+    expect(onStatusChange).toHaveBeenCalledWith('READY');
+    expect(screen.getByText('0 résultat(s) affiché(s) sur 3 commande(s).')).toBeInTheDocument();
   });
 
   it('shows the expected status action for a confirmed order', async () => {

@@ -5,6 +5,10 @@ export function formatCents(amountCents: number): string {
   }).format(amountCents / 100);
 }
 
+export function formatOrderShortId(orderId: string): string {
+  return orderId.slice(-8).toUpperCase();
+}
+
 export function formatDateTime(date: string): string {
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
@@ -21,4 +25,23 @@ export function formatPickupWindow(startAt: string, endAt: string): string {
   });
 
   return `${formatter.format(new Date(startAt))} - ${formatter.format(new Date(endAt))}`;
+}
+
+export function formatWithdrawalCodeState(
+  usedAt?: string | null,
+  expiresAt?: string | null
+): string {
+  if (usedAt) {
+    return `Code utilisé le ${formatDateTime(usedAt)}.`;
+  }
+
+  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+    return `Code expiré le ${formatDateTime(expiresAt)}.`;
+  }
+
+  if (expiresAt) {
+    return `Code valable jusqu'au ${formatDateTime(expiresAt)}.`;
+  }
+
+  return 'Code actif.';
 }

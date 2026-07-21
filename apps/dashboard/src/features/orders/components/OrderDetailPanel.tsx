@@ -6,7 +6,15 @@ import {
   UpdateOrderStatusPayload,
   ValidateWithdrawalPayload
 } from '../types';
-import { formatCents, formatDateTime, formatPickupWindow } from '../utils/order-formatters';
+import {
+  formatCents,
+  formatDateTime,
+  formatOrderShortId,
+  formatPickupWindow,
+  formatWithdrawalCodeState
+} from '../utils/order-formatters';
+import { getOrderCustomerName } from '../utils/order-filters';
+import { getNextMerchantStatusAction } from '../utils/order-status';
 import { OrderStatusActions } from './OrderStatusActions';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import { WithdrawalValidationForm } from './WithdrawalValidationForm';
@@ -35,14 +43,16 @@ export function OrderDetailPanel({
   onValidateWithdrawal
 }: OrderDetailPanelProps) {
   const displayedOrder = detail ?? order;
-  const customerName = displayedOrder.customerFirstName ?? displayedOrder.user.firstName;
+  const customerName = getOrderCustomerName(displayedOrder);
+  const nextAction = getNextMerchantStatusAction(displayedOrder.status);
 
   return (
     <Card className="order-detail-panel">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Commande sélectionnée</p>
-          <h3>{customerName}</h3>
+          <h3>#{formatOrderShortId(displayedOrder.id)}</h3>
+          <p className="muted">{customerName}</p>
         </div>
         <OrderStatusBadge status={displayedOrder.status} />
       </div>
@@ -52,6 +62,10 @@ export function OrderDetailPanel({
       ) : (
         <>
           <dl className="detail-grid">
+            <div>
+              <dt>Identifiant</dt>
+              <dd>#{formatOrderShortId(displayedOrder.id)}</dd>
+            </div>
             <div>
               <dt>Client</dt>
               <dd>
@@ -78,6 +92,10 @@ export function OrderDetailPanel({
               <dt>Total</dt>
               <dd>{formatCents(displayedOrder.totalCents)}</dd>
             </div>
+            <div>
+              <dt>Action suivante</dt>
+              <dd>{nextAction?.label ?? 'Aucune action disponible'}</dd>
+            </div>
           </dl>
 
           <section className="detail-section" aria-labelledby="order-items-title">
@@ -88,8 +106,9 @@ export function OrderDetailPanel({
               <ul className="order-items">
                 {displayedOrder.items.map((item) => (
                   <li key={item.id}>
+                    <span className="order-item-name">{item.productName}</span>
                     <span>
-                      {item.quantity} x {item.productName}
+                      {item.quantity} x {formatCents(item.unitPriceCents)}
                     </span>
                     <strong>{formatCents(item.totalPriceCents)}</strong>
                   </li>
@@ -97,6 +116,22 @@ export function OrderDetailPanel({
               </ul>
             )}
           </section>
+
+          {displayedOrder.withdrawalCode ? (
+            <section className="detail-section" aria-labelledby="withdrawal-code-title">
+              <h4 id="withdrawal-code-title">Retrait</h4>
+              <div className="withdrawal-code-box">
+                <span>Code de retrait</span>
+                <strong>{displayedOrder.withdrawalCode.code}</strong>
+                <p>
+                  {formatWithdrawalCodeState(
+                    displayedOrder.withdrawalCode.usedAt,
+                    displayedOrder.withdrawalCode.expiresAt
+                  )}
+                </p>
+              </div>
+            </section>
+          ) : null}
 
           {displayedOrder.specialNote ? (
             <section className="detail-section" aria-labelledby="order-note-title">
@@ -107,6 +142,13 @@ export function OrderDetailPanel({
 
           <section className="detail-section" aria-labelledby="order-actions-title">
             <h4 id="order-actions-title">Actions</h4>
+            <p className="muted">
+              {nextAction
+                ? `Action recommandée : ${nextAction.label}.`
+                : displayedOrder.status === 'READY'
+                  ? 'La commande est prête : validez le retrait avec le code étudiant.'
+                  : 'Aucune action commerçant n’est disponible pour ce statut.'}
+            </p>
             <div className="actions-stack">
               <OrderStatusActions
                 isUpdating={isStatusUpdating}

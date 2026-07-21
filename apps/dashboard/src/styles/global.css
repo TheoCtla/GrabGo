@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -154,7 +155,8 @@ a {
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
@@ -285,6 +287,50 @@ th {
   font-weight: 700;
 }
 
+.orders-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-tile {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d7d8d1;
+  border-radius: 8px;
+}
+
+.summary-tile span {
+  color: #5f6c65;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.summary-tile strong {
+  color: #17201b;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.orders-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d7d8d1;
+  border-radius: 8px;
+}
+
+.filter-result {
+  margin: 0;
+  color: #33443c;
+  font-weight: 700;
+}
+
 .orders-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
@@ -293,7 +339,28 @@ th {
 }
 
 tr.is-selected {
-  background: #f0f7f3;
+  background: #edf7f2;
+  box-shadow: inset 4px 0 0 #1f7a5c;
+}
+
+.order-short-id {
+  color: #1f4d3f;
+  font-weight: 800;
+}
+
+.table-primary-text,
+.table-secondary-text {
+  display: block;
+}
+
+.table-primary-text {
+  color: #17201b;
+  font-weight: 800;
+}
+
+.table-secondary-text {
+  color: #5f6c65;
+  font-size: 0.88rem;
 }
 
 .order-detail-panel {
@@ -353,11 +420,41 @@ tr.is-selected {
 }
 
 .order-items li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto auto;
   gap: 12px;
+  align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid #e5e7df;
+}
+
+.order-item-name {
+  font-weight: 800;
+}
+
+.withdrawal-code-box {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  background: #fff7d8;
+  border: 1px solid #ead57a;
+  border-radius: 8px;
+}
+
+.withdrawal-code-box span {
+  color: #6c5412;
+  font-weight: 800;
+}
+
+.withdrawal-code-box strong {
+  color: #17201b;
+  font-size: 1.9rem;
+  letter-spacing: 0;
+}
+
+.withdrawal-code-box p {
+  margin: 0;
+  color: #33443c;
 }
 
 .actions-stack,
@@ -406,8 +503,17 @@ tr.is-selected {
     grid-template-columns: 1fr;
   }
 
+  .orders-summary,
+  .orders-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .orders-workspace,
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-items li {
     grid-template-columns: 1fr;
   }
 }

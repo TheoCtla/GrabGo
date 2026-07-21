@@ -12,8 +12,15 @@ import {
   validateWithdrawal
 } from '../api/orders.api';
 import { OrderDetailPanel } from '../components/OrderDetailPanel';
+import { OrdersSummary } from '../components/OrdersSummary';
 import { OrdersTable } from '../components/OrdersTable';
+import { OrdersToolbar } from '../components/OrdersToolbar';
 import { UpdateOrderStatusPayload, ValidateWithdrawalPayload } from '../types';
+import {
+  OrdersStatusFilter,
+  filterMerchantOrders,
+  getOrdersSummaryCounts
+} from '../utils/order-filters';
 
 const MERCHANT_ORDERS_QUERY_KEY = ['merchant-orders'] as const;
 
@@ -25,6 +32,8 @@ export function MerchantOrdersPage() {
   const queryClient = useQueryClient();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
   const [feedbackMessage, setFeedbackMessage] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrdersStatusFilter>('ALL');
 
   const ordersQuery = useQuery({
     queryKey: MERCHANT_ORDERS_QUERY_KEY,
@@ -32,21 +41,27 @@ export function MerchantOrdersPage() {
   });
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data]);
-  const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? orders[0];
+  const filteredOrders = useMemo(
+    () => filterMerchantOrders(orders, { search, status: statusFilter }),
+    [orders, search, statusFilter]
+  );
+  const summaryCounts = useMemo(() => getOrdersSummaryCounts(orders), [orders]);
+  const selectedOrder =
+    filteredOrders.find((order) => order.id === selectedOrderId) ?? filteredOrders[0];
 
   useEffect(() => {
-    if (!selectedOrderId && orders[0]) {
-      setSelectedOrderId(orders[0].id);
+    if (!selectedOrderId && filteredOrders[0]) {
+      setSelectedOrderId(filteredOrders[0].id);
     }
 
     if (
       selectedOrderId &&
-      orders.length > 0 &&
-      !orders.some((order) => order.id === selectedOrderId)
+      filteredOrders.length > 0 &&
+      !filteredOrders.some((order) => order.id === selectedOrderId)
     ) {
-      setSelectedOrderId(orders[0]?.id);
+      setSelectedOrderId(filteredOrders[0]?.id);
     }
-  }, [orders, selectedOrderId]);
+  }, [filteredOrders, selectedOrderId]);
 
   const orderDetailQuery = useQuery({
     queryKey: ['order-detail', selectedOrder?.id],
@@ -126,44 +141,75 @@ export function MerchantOrdersPage() {
           message="Les nouvelles commandes confirmées apparaîtront ici automatiquement après connexion à l'API."
         />
       ) : (
-        <div className="orders-workspace">
-          <OrdersTable
-            orders={orders}
-            selectedOrderId={selectedOrder?.id}
-            onSelectOrder={(orderId) => {
+        <>
+          <OrdersSummary counts={summaryCounts} />
+          <OrdersToolbar
+            resultCount={filteredOrders.length}
+            search={search}
+            status={statusFilter}
+            totalCount={orders.length}
+            onSearchChange={(value) => {
+              setSearch(value);
               setFeedbackMessage(undefined);
-              setSelectedOrderId(orderId);
+            }}
+            onStatusChange={(value) => {
+              setStatusFilter(value);
+              setFeedbackMessage(undefined);
             }}
           />
 
-          {selectedOrder ? (
-            <OrderDetailPanel
-              detail={orderDetailQuery.data}
-              isDetailLoading={orderDetailQuery.isLoading}
-              isStatusUpdating={statusMutation.isPending}
-              isWithdrawalSubmitting={withdrawalMutation.isPending}
-              order={selectedOrder}
-              statusError={
-                statusMutation.isError
-                  ? getErrorMessage(statusMutation.error, 'Impossible de mettre à jour le statut.')
-                  : undefined
-              }
-              withdrawalError={
-                withdrawalMutation.isError
-                  ? getErrorMessage(withdrawalMutation.error, 'Impossible de valider le retrait.')
-                  : undefined
-              }
-              onUpdateStatus={(orderId, payload) => {
-                setFeedbackMessage(undefined);
-                statusMutation.mutate({ orderId, payload });
-              }}
-              onValidateWithdrawal={(payload) => {
-                setFeedbackMessage(undefined);
-                withdrawalMutation.mutate(payload);
-              }}
+          {filteredOrders.length === 0 ? (
+            <EmptyState
+              title="Aucun résultat"
+              message="Aucune commande ne correspond à votre recherche ou au statut sélectionné."
             />
-          ) : null}
-        </div>
+          ) : (
+            <div className="orders-workspace">
+              <OrdersTable
+                orders={filteredOrders}
+                selectedOrderId={selectedOrder?.id}
+                onSelectOrder={(orderId) => {
+                  setFeedbackMessage(undefined);
+                  setSelectedOrderId(orderId);
+                }}
+              />
+
+              {selectedOrder ? (
+                <OrderDetailPanel
+                  detail={orderDetailQuery.data}
+                  isDetailLoading={orderDetailQuery.isLoading}
+                  isStatusUpdating={statusMutation.isPending}
+                  isWithdrawalSubmitting={withdrawalMutation.isPending}
+                  order={selectedOrder}
+                  statusError={
+                    statusMutation.isError
+                      ? getErrorMessage(
+                          statusMutation.error,
+                          'Impossible de mettre à jour le statut.'
+                        )
+                      : undefined
+                  }
+                  withdrawalError={
+                    withdrawalMutation.isError
+                      ? getErrorMessage(
+                          withdrawalMutation.error,
+                          'Impossible de valider le retrait.'
+                        )
+                      : undefined
+                  }
+                  onUpdateStatus={(orderId, payload) => {
+                    setFeedbackMessage(undefined);
+                    statusMutation.mutate({ orderId, payload });
+                  }}
+                  onValidateWithdrawal={(payload) => {
+                    setFeedbackMessage(undefined);
+                    withdrawalMutation.mutate(payload);
+                  }}
+                />
+              ) : null}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

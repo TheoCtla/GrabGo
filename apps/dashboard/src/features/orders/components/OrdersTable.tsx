@@ -1,6 +1,7 @@
 import { Button } from '../../../shared/components/Button';
 import { MerchantOrder } from '../types';
-import { formatCents, formatPickupWindow } from '../utils/order-formatters';
+import { formatCents, formatOrderShortId, formatPickupWindow } from '../utils/order-formatters';
+import { getOrderCustomerName } from '../utils/order-filters';
 import { OrderStatusBadge } from './OrderStatusBadge';
 
 type OrdersTableProps = {
@@ -15,6 +16,7 @@ export function OrdersTable({ orders, selectedOrderId, onSelectOrder }: OrdersTa
       <table>
         <thead>
           <tr>
+            <th scope="col">Commande</th>
             <th scope="col">Client</th>
             <th scope="col">Snack</th>
             <th scope="col">Retrait</th>
@@ -26,7 +28,13 @@ export function OrdersTable({ orders, selectedOrderId, onSelectOrder }: OrdersTa
         <tbody>
           {orders.map((order) => (
             <tr key={order.id} className={order.id === selectedOrderId ? 'is-selected' : undefined}>
-              <td>{order.customerFirstName ?? order.user.firstName}</td>
+              <td>
+                <span className="order-short-id">#{formatOrderShortId(order.id)}</span>
+              </td>
+              <td>
+                <span className="table-primary-text">{getOrderCustomerName(order)}</span>
+                <span className="table-secondary-text">{order.user.email}</span>
+              </td>
               <td>{order.snack.name}</td>
               <td>{formatPickupWindow(order.slot.startAt, order.slot.endAt)}</td>
               <td>
@@ -36,6 +44,7 @@ export function OrdersTable({ orders, selectedOrderId, onSelectOrder }: OrdersTa
               <td>
                 <Button
                   aria-pressed={order.id === selectedOrderId}
+                  aria-label={`Ouvrir la commande ${formatOrderShortId(order.id)} de ${getOrderCustomerName(order)}`}
                   onClick={() => onSelectOrder(order.id)}
                   variant="secondary"
                 >
