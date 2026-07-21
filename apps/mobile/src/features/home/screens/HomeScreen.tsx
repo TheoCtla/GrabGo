@@ -6,9 +6,10 @@ import { Screen } from '../../../shared/components/Screen';
 
 type HomeScreenProps = {
   onBrowseCampuses: () => void;
+  onViewCart: () => void;
 };
 
-export function HomeScreen({ onBrowseCampuses }: HomeScreenProps) {
+export function HomeScreen({ onBrowseCampuses, onViewCart }: HomeScreenProps) {
   const { session, signOut } = useAuth();
   const firstName = session?.user.firstName ?? 'étudiant';
 
@@ -24,10 +25,10 @@ export function HomeScreen({ onBrowseCampuses }: HomeScreenProps) {
       <AppCard>
         <Text style={styles.cardTitle}>Parcours étudiant</Text>
         <Text style={styles.text}>
-          Consultez les campus, les snacks, les produits et les créneaux disponibles avant la
-          prochaine étape panier.
+          Consultez les campus, choisissez vos produits, puis validez un créneau de retrait.
         </Text>
         <AppButton label="Choisir un campus" onPress={onBrowseCampuses} />
+        <AppButton label="Voir mon panier" onPress={onViewCart} variant="secondary" />
         <AppButton
           label="Se déconnecter"
           onPress={() => {

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { ErrorState } from '../../../shared/components/ErrorState';
@@ -7,15 +7,23 @@ import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
 import { getProducts, getSnackDetail } from '../api/catalog.api';
 import { ProductCard } from '../components/ProductCard';
-import { Snack } from '../types';
+import { Product, Snack } from '../types';
+import { useCart } from '../../orders/state/cart-context';
 
 type SnackDetailScreenProps = {
   snack: Snack;
   onBack: () => void;
+  onViewCart: () => void;
   onViewSlots: (snack: Snack) => void;
 };
 
-export function SnackDetailScreen({ onBack, onViewSlots, snack }: SnackDetailScreenProps) {
+export function SnackDetailScreen({
+  onBack,
+  onViewCart,
+  onViewSlots,
+  snack
+}: SnackDetailScreenProps) {
+  const { addProduct, itemCount, state: cartState } = useCart();
   const snackQuery = useQuery({
     queryKey: ['snack-detail', snack.id],
     queryFn: () => getSnackDetail(snack.id),
@@ -27,6 +35,28 @@ export function SnackDetailScreen({ onBack, onViewSlots, snack }: SnackDetailScr
   });
   const displayedSnack = snackQuery.data ?? snack;
 
+  const handleAddToCart = (product: Product) => {
+    const cartSnack = { id: displayedSnack.id, name: displayedSnack.name };
+
+    if (cartState.snack && cartState.snack.id !== displayedSnack.id) {
+      Alert.alert(
+        'Changer de snack ?',
+        'Votre panier contient déjà des produits d’un autre snack. Voulez-vous le remplacer ?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Remplacer',
+            style: 'destructive',
+            onPress: () => addProduct(product, cartSnack, 'replace')
+          }
+        ]
+      );
+      return;
+    }
+
+    addProduct(product, cartSnack);
+  };
+
   return (
     <Screen>
       <View style={styles.heading}>
@@ -37,7 +67,10 @@ export function SnackDetailScreen({ onBack, onViewSlots, snack }: SnackDetailScr
         {displayedSnack.description ? (
           <Text style={styles.subtitle}>{displayedSnack.description}</Text>
         ) : null}
-        <AppButton label="Voir les créneaux" onPress={() => onViewSlots(displayedSnack)} />
+        <View style={styles.actions}>
+          <AppButton label="Voir les créneaux" onPress={() => onViewSlots(displayedSnack)} />
+          <AppButton label={`Panier (${itemCount})`} onPress={onViewCart} variant="secondary" />
+        </View>
       </View>
 
       {productsQuery.isLoading ? <LoadingState message="Chargement des produits..." /> : null}
@@ -58,13 +91,16 @@ export function SnackDetailScreen({ onBack, onViewSlots, snack }: SnackDetailScr
         />
       ) : null}
       {productsQuery.data?.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
       ))}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  actions: {
+    gap: 8
+  },
   heading: {
     gap: 10
   },

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
 import { AuthProvider } from '../shared/auth/auth-context';
+import { CartProvider } from '../features/orders/state/cart-context';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -22,7 +23,9 @@ export function AppProviders({ children }: AppProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <CartProvider>{children}</CartProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

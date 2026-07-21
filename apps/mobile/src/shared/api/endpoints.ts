@@ -11,5 +11,11 @@ export const endpoints = {
     snacks: (campusId?: string) =>
       campusId ? `/snacks?campusId=${encodeURIComponent(campusId)}` : '/snacks',
     snackDetail: (snackId: string) => `/snacks/${snackId}`
+  },
+  orders: {
+    create: '/orders',
+    detail: (orderId: string) => `/orders/${orderId}`,
+    me: '/orders/me',
+    pay: (orderId: string) => `/orders/${orderId}/pay`
   }
 } as const;

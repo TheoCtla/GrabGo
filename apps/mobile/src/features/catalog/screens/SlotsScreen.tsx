@@ -7,14 +7,15 @@ import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
 import { getAvailableSlots } from '../api/catalog.api';
 import { SlotCard } from '../components/SlotCard';
-import { Snack } from '../types';
+import { Slot, Snack } from '../types';
 
 type SlotsScreenProps = {
-  snack: Snack;
+  snack: Pick<Snack, 'id' | 'name'>;
   onBack: () => void;
+  onSelectSlot: (slot: Slot) => void;
 };
 
-export function SlotsScreen({ onBack, snack }: SlotsScreenProps) {
+export function SlotsScreen({ onBack, onSelectSlot, snack }: SlotsScreenProps) {
   const slotsQuery = useQuery({
     queryKey: ['slots', snack.id],
     queryFn: () => getAvailableSlots(snack.id)
@@ -48,7 +49,7 @@ export function SlotsScreen({ onBack, snack }: SlotsScreenProps) {
         />
       ) : null}
       {slotsQuery.data?.map((slot) => (
-        <SlotCard key={slot.id} slot={slot} />
+        <SlotCard key={slot.id} slot={slot} onSelect={onSelectSlot} />
       ))}
     </Screen>
   );

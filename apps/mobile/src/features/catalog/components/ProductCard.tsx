@@ -1,13 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
 import { Product } from '../types';
 import { formatCents } from '../utils/catalog-formatters';
 
 type ProductCardProps = {
   product: Product;
+  onAddToCart?: (product: Product) => void;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ onAddToCart, product }: ProductCardProps) {
   const allergenNames = product.allergens.map((allergen) => allergen.name).join(', ');
 
   return (
@@ -23,6 +25,13 @@ export function ProductCard({ product }: ProductCardProps) {
       <Text style={styles.muted}>Allergènes : {allergenNames || 'aucun allergène renseigné'}</Text>
       {!product.allergensVerifiedAt ? (
         <Text style={styles.warning}>Informations allergènes à confirmer auprès du snack.</Text>
+      ) : null}
+      {onAddToCart ? (
+        <AppButton
+          disabled={!product.isAvailable || product.stock <= 0}
+          label={product.isAvailable && product.stock > 0 ? 'Ajouter au panier' : 'Indisponible'}
+          onPress={() => onAddToCart(product)}
+        />
       ) : null}
     </AppCard>
   );
