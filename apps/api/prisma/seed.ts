@@ -4,13 +4,43 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 const TEST_PASSWORD = 'Password123!';
+const SLOT_DURATION_MS = 15 * 60 * 1000;
+const SEEDED_SLOT_COUNT = 6;
 
-function getTomorrowAt(hour: number, minute: number): Date {
+function getTodayAt(hour: number, minute: number): Date {
   const date = new Date();
-  date.setDate(date.getDate() + 1);
   date.setHours(hour, minute, 0, 0);
 
   return date;
+}
+
+function roundUpToNextQuarter(date: Date): Date {
+  const rounded = new Date(date);
+  const minutes = rounded.getMinutes();
+  const minutesToAdd = (15 - (minutes % 15)) % 15;
+
+  rounded.setSeconds(0, 0);
+
+  if (minutesToAdd === 0) {
+    rounded.setMinutes(minutes + 15);
+    return rounded;
+  }
+
+  rounded.setMinutes(minutes + minutesToAdd);
+  return rounded;
+}
+
+function getFreshSlotStarts(): Date[] {
+  const preferredStart = new Date(roundUpToNextQuarter(new Date()).getTime() + 30 * 60 * 1000);
+  const earliestStart = getTodayAt(11, 30);
+  const latestStart = getTodayAt(22, 15);
+  const firstStart = new Date(
+    Math.min(Math.max(preferredStart.getTime(), earliestStart.getTime()), latestStart.getTime())
+  );
+
+  return Array.from({ length: SEEDED_SLOT_COUNT }, (_, index) => {
+    return new Date(firstStart.getTime() + index * SLOT_DURATION_MS);
+  });
 }
 
 async function main() {
@@ -175,17 +205,24 @@ async function main() {
     });
   }
 
-  const slotStarts = [
-    getTomorrowAt(12, 0),
-    getTomorrowAt(12, 15),
-    getTomorrowAt(12, 30),
-    getTomorrowAt(12, 45),
-    getTomorrowAt(13, 0),
-    getTomorrowAt(13, 15)
-  ];
+  const slotStarts = getFreshSlotStarts();
+
+  // The seed owns the demo snack slots. Removing only slots without orders avoids stale
+  // dates in manual tests while preserving existing orders, payments and withdrawal codes.
+  await prisma.slot.deleteMany({
+    where: {
+      snackId: snack.id,
+      startAt: {
+        notIn: slotStarts
+      },
+      orders: {
+        none: {}
+      }
+    }
+  });
 
   for (const startAt of slotStarts) {
-    const endAt = new Date(startAt.getTime() + 15 * 60 * 1000);
+    const endAt = new Date(startAt.getTime() + SLOT_DURATION_MS);
 
     await prisma.slot.upsert({
       where: {
@@ -209,6 +246,11 @@ async function main() {
       }
     });
   }
+
+  const firstSlotStartAt = slotStarts[0]?.toISOString();
+  const lastSlotEndAt = slotStarts.at(-1)
+    ? new Date(slotStarts[slotStarts.length - 1].getTime() + SLOT_DURATION_MS).toISOString()
+    : undefined;
 
   const counts = await Promise.all([
     prisma.campus.count(),
@@ -240,6 +282,9 @@ async function main() {
     studentEmail: student.email,
     merchantEmail: merchantUser.email,
     snackId: snack.id,
+    generatedSlotCount: slotStarts.length,
+    firstSlotStartAt,
+    lastSlotEndAt,
     campusCount,
     userCount,
     merchantCount,
