@@ -115,6 +115,7 @@ a {
 }
 
 .page-heading,
+.page-actions,
 .user-menu {
   display: flex;
   align-items: center;
@@ -256,6 +257,8 @@ th {
 
 .status-pill {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 8px;
   background: #eef7f2;
   border: 1px solid #9bc4b4;
@@ -263,6 +266,104 @@ th {
   color: #1f4d3f;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: currentcolor;
+  border-radius: 999px;
+}
+
+.feedback-message {
+  margin: 0;
+  padding: 12px 14px;
+  color: #1f4d3f;
+  background: #e8f3ee;
+  border: 1px solid #9bc4b4;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.orders-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
+tr.is-selected {
+  background: #f0f7f3;
+}
+
+.order-detail-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-heading h3,
+.detail-section h4 {
+  margin: 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.detail-grid div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: #f8faf7;
+  border: 1px solid #e1e5de;
+  border-radius: 8px;
+}
+
+.detail-grid dt {
+  color: #5f6c65;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.detail-grid dd {
+  margin: 0;
+}
+
+.detail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.order-items {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.order-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7df;
+}
+
+.actions-stack,
+.withdrawal-form {
+  display: grid;
+  gap: 12px;
 }
 
 .summary-grid {
@@ -281,6 +382,8 @@ th {
 @media (max-width: 760px) {
   .app-header,
   .page-heading,
+  .page-actions,
+  .panel-heading,
   .user-menu {
     align-items: flex-start;
     flex-direction: column;
@@ -300,6 +403,11 @@ th {
   }
 
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-workspace,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }

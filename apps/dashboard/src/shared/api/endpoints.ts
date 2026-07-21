@@ -4,6 +4,9 @@ export const endpoints = {
     me: '/auth/me'
   },
   orders: {
-    merchant: '/orders/merchant'
+    detail: (orderId: string) => `/orders/${orderId}`,
+    merchant: '/orders/merchant',
+    status: (orderId: string) => `/orders/${orderId}/status`,
+    withdrawalValidate: '/orders/withdrawal/validate'
   }
 } as const;
