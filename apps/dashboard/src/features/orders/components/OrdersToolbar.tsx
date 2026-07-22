@@ -1,4 +1,4 @@
-import { ChangeEvent, useId } from 'react';
+import { ChangeEvent } from 'react';
 import { OrdersStatusFilter } from '../utils/order-filters';
 
 type OrdersToolbarProps = {
@@ -19,6 +19,9 @@ const STATUS_FILTER_OPTIONS: Array<{ label: string; value: OrdersStatusFilter }>
   { label: 'En retard', value: 'LATE' }
 ];
 
+const searchId = 'merchant-orders-search';
+const statusId = 'merchant-orders-status';
+
 export function OrdersToolbar({
   onSearchChange,
   onStatusChange,
@@ -27,9 +30,6 @@ export function OrdersToolbar({
   status,
   totalCount
 }: OrdersToolbarProps) {
-  const searchId = useId();
-  const statusId = useId();
-
   function handleStatusChange(event: ChangeEvent<HTMLSelectElement>) {
     onStatusChange(event.target.value as OrdersStatusFilter);
   }

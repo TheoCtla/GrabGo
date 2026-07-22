@@ -2,12 +2,7 @@ import { MerchantOrder, OrderStatus } from '../types';
 import { formatOrderShortId, formatPickupWindow } from './order-formatters';
 
 export type OrdersStatusFilter =
-  | 'ALL'
-  | 'CONFIRMED'
-  | 'WAITING_PULL_CONFIRMATION'
-  | 'PREPARING'
-  | 'READY'
-  | 'LATE';
+  'ALL' | 'CONFIRMED' | 'WAITING_PULL_CONFIRMATION' | 'PREPARING' | 'READY' | 'LATE';
 
 export type OrdersFilters = {
   search: string;
