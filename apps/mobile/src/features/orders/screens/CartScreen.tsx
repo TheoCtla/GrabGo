@@ -3,6 +3,7 @@ import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { CartItemRow } from '../components/CartItemRow';
 import { CartSummary } from '../components/CartSummary';
 import { useCart } from '../state/cart-context';
@@ -20,7 +21,6 @@ export function CartScreen({ onBack, onBrowseCampuses, onChooseSlot }: CartScree
   return (
     <Screen>
       <View style={styles.heading}>
-        <AppButton label="Retour" onPress={onBack} variant="ghost" />
         <Text accessibilityRole="header" style={styles.title}>
           Panier
         </Text>
@@ -67,6 +67,7 @@ export function CartScreen({ onBack, onBrowseCampuses, onChooseSlot }: CartScree
         snack={state.snack}
       />
       <AppButton disabled={itemCount === 0} label="Choisir un créneau" onPress={onChooseSlot} />
+      <AppButton label="Retour" onPress={onBack} variant="ghost" />
       <AppButton label="Continuer mes achats" onPress={onBrowseCampuses} variant="secondary" />
     </Screen>
   );
@@ -77,10 +78,10 @@ const styles = StyleSheet.create({
     gap: 6
   },
   subtitle: {
-    color: '#5f6c65'
+    color: mobileColors.light
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }

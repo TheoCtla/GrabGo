@@ -5,6 +5,7 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { getProducts, getSnackDetail } from '../api/catalog.api';
 import { ProductCard } from '../components/ProductCard';
 import { Product, Snack } from '../types';
@@ -14,15 +15,9 @@ type SnackDetailScreenProps = {
   snack: Snack;
   onBack: () => void;
   onViewCart: () => void;
-  onViewSlots: (snack: Snack) => void;
 };
 
-export function SnackDetailScreen({
-  onBack,
-  onViewCart,
-  onViewSlots,
-  snack
-}: SnackDetailScreenProps) {
+export function SnackDetailScreen({ onBack, onViewCart, snack }: SnackDetailScreenProps) {
   const { addProduct, itemCount, state: cartState } = useCart();
   const snackQuery = useQuery({
     queryKey: ['snack-detail', snack.id],
@@ -46,7 +41,6 @@ export function SnackDetailScreen({
           { text: 'Annuler', style: 'cancel' },
           {
             text: 'Remplacer',
-            style: 'destructive',
             onPress: () => addProduct(product, cartSnack, 'replace')
           }
         ]
@@ -58,9 +52,8 @@ export function SnackDetailScreen({
   };
 
   return (
-    <Screen>
+    <Screen stickyHeaderIndices={[0]}>
       <View style={styles.heading}>
-        <AppButton label="Retour" onPress={onBack} variant="ghost" />
         <Text accessibilityRole="header" style={styles.title}>
           {displayedSnack.name}
         </Text>
@@ -68,8 +61,8 @@ export function SnackDetailScreen({
           <Text style={styles.subtitle}>{displayedSnack.description}</Text>
         ) : null}
         <View style={styles.actions}>
-          <AppButton label="Voir les créneaux" onPress={() => onViewSlots(displayedSnack)} />
           <AppButton label={`Panier (${itemCount})`} onPress={onViewCart} variant="secondary" />
+          <AppButton label="Retour" onPress={onBack} variant="ghost" />
         </View>
       </View>
 
@@ -99,16 +92,19 @@ export function SnackDetailScreen({
 
 const styles = StyleSheet.create({
   actions: {
-    gap: 8
+    gap: 8,
+    marginTop: 12
   },
   heading: {
-    gap: 10
+    gap: 10,
+    paddingBottom: 12,
+    backgroundColor: mobileColors.dark
   },
   subtitle: {
-    color: '#5f6c65'
+    color: mobileColors.light
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }

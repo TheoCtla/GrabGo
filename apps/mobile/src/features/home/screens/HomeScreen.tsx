@@ -3,13 +3,13 @@ import { useAuth } from '../../../shared/auth/auth-context';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 
 type HomeScreenProps = {
   onBrowseCampuses: () => void;
-  onViewCart: () => void;
 };
 
-export function HomeScreen({ onBrowseCampuses, onViewCart }: HomeScreenProps) {
+export function HomeScreen({ onBrowseCampuses }: HomeScreenProps) {
   const { session, signOut } = useAuth();
   const firstName = session?.user.firstName ?? 'étudiant';
 
@@ -28,7 +28,6 @@ export function HomeScreen({ onBrowseCampuses, onViewCart }: HomeScreenProps) {
           Consultez les campus, choisissez vos produits, puis validez un créneau de retrait.
         </Text>
         <AppButton label="Choisir un campus" onPress={onBrowseCampuses} />
-        <AppButton label="Voir mon panier" onPress={onViewCart} variant="secondary" />
         <AppButton
           label="Se déconnecter"
           onPress={() => {
@@ -43,12 +42,12 @@ export function HomeScreen({ onBrowseCampuses, onViewCart }: HomeScreenProps) {
 
 const styles = StyleSheet.create({
   cardTitle: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   },
   eyebrow: {
-    color: '#40685a',
+    color: mobileColors.accent,
     fontWeight: '800',
     textTransform: 'uppercase'
   },
@@ -56,14 +55,14 @@ const styles = StyleSheet.create({
     gap: 6
   },
   subtitle: {
-    color: '#5f6c65',
+    color: mobileColors.light,
     fontSize: 16
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 30,
     fontWeight: '900'
   }

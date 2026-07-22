@@ -1,6 +1,7 @@
 import { StyleSheet, Text } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
+import { mobileColors } from '../../../shared/theme/colors';
 import { Slot } from '../types';
 import { formatSlotAvailability, formatSlotWindow } from '../utils/catalog-formatters';
 
@@ -25,10 +26,10 @@ export function SlotCard({ onSelect, slot }: SlotCardProps) {
 
 const styles = StyleSheet.create({
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   }

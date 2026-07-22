@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { mobileColors } from '../theme/colors';
 
 type AppTextInputProps = TextInputProps & {
   label: string;
@@ -13,7 +14,7 @@ export function AppTextInput({ error, label, style, ...props }: AppTextInputProp
         accessibilityLabel={label}
         accessibilityHint={error}
         style={[styles.input, error ? styles.inputError : null, style]}
-        placeholderTextColor="#6b756e"
+        placeholderTextColor={mobileColors.light}
         {...props}
       />
       {error ? (
@@ -27,27 +28,27 @@ export function AppTextInput({ error, label, style, ...props }: AppTextInputProp
 
 const styles = StyleSheet.create({
   error: {
-    color: '#b42318',
+    color: mobileColors.light,
     fontWeight: '700'
   },
   field: {
     gap: 6
   },
   input: {
+    backgroundColor: mobileColors.dark,
+    borderColor: mobileColors.light,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: mobileColors.light,
     minHeight: 48,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#17201b',
-    backgroundColor: '#ffffff',
-    borderColor: '#aeb7b0',
-    borderRadius: 8,
-    borderWidth: 1
+    paddingVertical: 10
   },
   inputError: {
-    borderColor: '#b42318'
+    borderColor: mobileColors.accent
   },
   label: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontWeight: '700'
   }
 });

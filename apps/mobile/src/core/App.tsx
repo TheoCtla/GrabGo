@@ -5,7 +5,7 @@ import { AppNavigation } from './navigation';
 export function App() {
   return (
     <AppProviders>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <AppNavigation />
     </AppProviders>
   );

@@ -1,6 +1,7 @@
 import { StyleSheet, Text } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
+import { mobileColors } from '../../../shared/theme/colors';
 import { Campus } from '../types';
 
 type CampusCardProps = {
@@ -23,13 +24,13 @@ export function CampusCard({ campus, onSelect }: CampusCardProps) {
 
 const styles = StyleSheet.create({
   muted: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   }

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppCard } from '../../../shared/components/AppCard';
+import { mobileColors } from '../../../shared/theme/colors';
 import { Order } from '../types';
 import { formatCents, formatOrderId, formatSlotWindow } from '../utils/order-formatters';
 import { OrderStatusBadge } from './OrderStatusBadge';
@@ -47,36 +48,36 @@ export function OrderConfirmationCard({ order }: OrderConfirmationCardProps) {
 
 const styles = StyleSheet.create({
   code: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 32,
     fontWeight: '900',
     letterSpacing: 2
   },
   codeBox: {
-    backgroundColor: '#fff7d8',
-    borderColor: '#ead57a',
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent,
     borderRadius: 8,
     borderWidth: 1,
     gap: 4,
     padding: 12
   },
   codeLabel: {
-    color: '#6c5412',
+    color: mobileColors.dark,
     fontWeight: '800'
   },
   header: {
     gap: 8
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 20,
     fontWeight: '900'
   },
   total: {
-    color: '#1f7a5c',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '900'
   }

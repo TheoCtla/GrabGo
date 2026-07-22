@@ -5,6 +5,7 @@ import { AppCard } from '../../../shared/components/AppCard';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { getOrderDetail } from '../api/orders.api';
 import { OrderConfirmationCard } from '../components/OrderConfirmationCard';
 import { formatCents } from '../utils/order-formatters';
@@ -68,29 +69,29 @@ const styles = StyleSheet.create({
     gap: 6
   },
   item: {
-    borderBottomColor: '#e4e0d8',
+    borderBottomColor: mobileColors.accent,
     borderBottomWidth: 1,
     gap: 4,
     paddingBottom: 10
   },
   itemMeta: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   itemName: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontWeight: '800'
   },
   itemTotal: {
-    color: '#1f7a5c',
+    color: mobileColors.dark,
     fontWeight: '800'
   },
   sectionTitle: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '900'
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }
