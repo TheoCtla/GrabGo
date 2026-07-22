@@ -28,4 +28,4 @@ COPY --from=build /app ./
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && npm run prisma:seed -w apps/api && node apps/api/dist/src/main.js"]
