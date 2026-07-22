@@ -13,8 +13,8 @@ type OrdersToolbarProps = {
 const STATUS_FILTER_OPTIONS: Array<{ label: string; value: OrdersStatusFilter }> = [
   { label: 'Tous', value: 'ALL' },
   { label: 'Confirmée', value: 'CONFIRMED' },
-  { label: 'Attente confirmation', value: 'WAITING_PULL_CONFIRMATION' },
-  { label: 'En préparation', value: 'PREPARING' },
+  { label: 'Attente', value: 'WAITING_PULL_CONFIRMATION' },
+  { label: 'Préparation', value: 'PREPARING' },
   { label: 'Prête', value: 'READY' },
   { label: 'En retard', value: 'LATE' }
 ];

@@ -28,6 +28,14 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+function getWithdrawalErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return 'Le code de retrait est incorrect.';
+  }
+
+  return 'Impossible de valider le retrait pour le moment.';
+}
+
 export function MerchantOrdersPage() {
   const queryClient = useQueryClient();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>();
@@ -191,10 +199,7 @@ export function MerchantOrdersPage() {
                   }
                   withdrawalError={
                     withdrawalMutation.isError
-                      ? getErrorMessage(
-                          withdrawalMutation.error,
-                          'Impossible de valider le retrait.'
-                        )
+                      ? getWithdrawalErrorMessage(withdrawalMutation.error)
                       : undefined
                   }
                   onUpdateStatus={(orderId, payload) => {

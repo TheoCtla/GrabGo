@@ -4,6 +4,7 @@ import {
   MerchantOrder,
   MerchantOrderMutationResponse,
   OrderDetail,
+  OrderStatus,
   UpdateOrderStatusPayload,
   ValidateWithdrawalPayload,
   ValidateWithdrawalResponse,
@@ -12,10 +13,65 @@ import {
   orderDetailSchema
 } from '../types';
 
+type MerchantOrdersQuery = {
+  from?: string;
+  status?: OrderStatus;
+  to?: string;
+};
+
+const SUMMARY_ORDER_STATUSES: OrderStatus[] = [
+  'CONFIRMED',
+  'WAITING_PULL_CONFIRMATION',
+  'PREPARING',
+  'READY',
+  'LATE',
+  'COMPLETED'
+];
+
 export function getMerchantOrders(): Promise<MerchantOrder[]> {
-  return httpClient<MerchantOrder[]>(endpoints.orders.merchant, {
+  return getMerchantOrdersByQuery();
+}
+
+export async function getMerchantOrdersForSummary(query: {
+  from: string;
+  to: string;
+}): Promise<MerchantOrder[]> {
+  const ordersByStatus = await Promise.all(
+    SUMMARY_ORDER_STATUSES.map((status) =>
+      getMerchantOrdersByQuery({
+        ...query,
+        status
+      })
+    )
+  );
+
+  return ordersByStatus.flat();
+}
+
+function getMerchantOrdersByQuery(query: MerchantOrdersQuery = {}): Promise<MerchantOrder[]> {
+  return httpClient<MerchantOrder[]>(getMerchantOrdersEndpoint(query), {
     schema: merchantOrdersSchema
   });
+}
+
+function getMerchantOrdersEndpoint(query: MerchantOrdersQuery): string {
+  const searchParams = new URLSearchParams();
+
+  if (query.status) {
+    searchParams.set('status', query.status);
+  }
+
+  if (query.from) {
+    searchParams.set('from', query.from);
+  }
+
+  if (query.to) {
+    searchParams.set('to', query.to);
+  }
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `${endpoints.orders.merchant}?${queryString}` : endpoints.orders.merchant;
 }
 
 export function getOrderDetail(orderId: string): Promise<OrderDetail> {

@@ -16,7 +16,7 @@ export function OrdersSummary({ counts }: OrdersSummaryProps) {
         <strong>{counts.ready}</strong>
       </div>
       <div className="summary-tile">
-        <span>En préparation</span>
+        <span>Préparation</span>
         <strong>{counts.preparing}</strong>
       </div>
       <div className="summary-tile">

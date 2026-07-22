@@ -72,13 +72,9 @@ export function OrderDetailPanel({
                 {displayedOrder.user.firstName} {displayedOrder.user.lastName}
               </dd>
             </div>
-            <div>
+            <div className="detail-grid-email">
               <dt>Email</dt>
               <dd>{displayedOrder.user.email}</dd>
-            </div>
-            <div>
-              <dt>Snack</dt>
-              <dd>{displayedOrder.snack.name}</dd>
             </div>
             <div>
               <dt>Créneau</dt>
@@ -140,15 +136,7 @@ export function OrderDetailPanel({
             </section>
           ) : null}
 
-          <section className="detail-section" aria-labelledby="order-actions-title">
-            <h4 id="order-actions-title">Actions</h4>
-            <p className="muted">
-              {nextAction
-                ? `Action recommandée : ${nextAction.label}.`
-                : displayedOrder.status === 'READY'
-                  ? 'La commande est prête : validez le retrait avec le code étudiant.'
-                  : 'Aucune action commerçant n’est disponible pour ce statut.'}
-            </p>
+          <div className="detail-section">
             <div className="actions-stack">
               <OrderStatusActions
                 isUpdating={isStatusUpdating}
@@ -170,7 +158,7 @@ export function OrderDetailPanel({
                 />
               ) : null}
             </div>
-          </section>
+          </div>
         </>
       )}
     </Card>

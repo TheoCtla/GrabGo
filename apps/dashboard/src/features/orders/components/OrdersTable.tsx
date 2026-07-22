@@ -1,6 +1,6 @@
-import { Button } from '../../../shared/components/Button';
+import { KeyboardEvent } from 'react';
 import { MerchantOrder } from '../types';
-import { formatCents, formatOrderShortId, formatPickupWindow } from '../utils/order-formatters';
+import { formatOrderShortId } from '../utils/order-formatters';
 import { getOrderCustomerName } from '../utils/order-filters';
 import { OrderStatusBadge } from './OrderStatusBadge';
 
@@ -11,6 +11,15 @@ type OrdersTableProps = {
 };
 
 export function OrdersTable({ orders, selectedOrderId, onSelectOrder }: OrdersTableProps) {
+  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, orderId: string) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    onSelectOrder(orderId);
+  }
+
   return (
     <div className="table-wrapper">
       <table>
@@ -18,38 +27,30 @@ export function OrdersTable({ orders, selectedOrderId, onSelectOrder }: OrdersTa
           <tr>
             <th scope="col">Commande</th>
             <th scope="col">Client</th>
-            <th scope="col">Snack</th>
-            <th scope="col">Retrait</th>
             <th scope="col">Statut</th>
-            <th scope="col">Total</th>
-            <th scope="col">Détail</th>
           </tr>
         </thead>
         <tbody>
           {orders.map((order) => (
-            <tr key={order.id} className={order.id === selectedOrderId ? 'is-selected' : undefined}>
+            <tr
+              key={order.id}
+              aria-label={`Ouvrir la commande ${formatOrderShortId(order.id)} de ${getOrderCustomerName(order)}`}
+              aria-pressed={order.id === selectedOrderId}
+              className={`order-row${order.id === selectedOrderId ? ' is-selected' : ''}`}
+              onClick={() => onSelectOrder(order.id)}
+              onKeyDown={(event) => handleRowKeyDown(event, order.id)}
+              role="button"
+              tabIndex={0}
+            >
               <td>
-                <span className="order-short-id">#{formatOrderShortId(order.id)}</span>
+                <span className="order-short-id">Commande #{formatOrderShortId(order.id)}</span>
               </td>
               <td>
                 <span className="table-primary-text">{getOrderCustomerName(order)}</span>
                 <span className="table-secondary-text">{order.user.email}</span>
               </td>
-              <td>{order.snack.name}</td>
-              <td>{formatPickupWindow(order.slot.startAt, order.slot.endAt)}</td>
               <td>
                 <OrderStatusBadge status={order.status} />
-              </td>
-              <td>{formatCents(order.totalCents)}</td>
-              <td>
-                <Button
-                  aria-pressed={order.id === selectedOrderId}
-                  aria-label={`Ouvrir la commande ${formatOrderShortId(order.id)} de ${getOrderCustomerName(order)}`}
-                  onClick={() => onSelectOrder(order.id)}
-                  variant="secondary"
-                >
-                  Ouvrir
-                </Button>
               </td>
             </tr>
           ))}

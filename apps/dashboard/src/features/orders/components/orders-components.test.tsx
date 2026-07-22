@@ -1,13 +1,18 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { MerchantOrder } from '../types';
+import { OrderDetailPanel } from './OrderDetailPanel';
 import { OrderStatusActions } from './OrderStatusActions';
 import { OrdersSummary } from './OrdersSummary';
 import { OrdersTable } from './OrdersTable';
 import { OrdersToolbar } from './OrdersToolbar';
 import { WithdrawalValidationForm } from './WithdrawalValidationForm';
+
+afterEach(() => {
+  cleanup();
+});
 
 function createMerchantOrder(overrides: Partial<MerchantOrder> = {}): MerchantOrder {
   return {
@@ -64,6 +69,9 @@ function createMerchantOrder(overrides: Partial<MerchantOrder> = {}): MerchantOr
 }
 
 describe('orders dashboard components', () => {
+  const deprecatedWaitingLabel = new RegExp(['Attente', 'confirmation'].join(' '));
+  const deprecatedRecommendedActionLabel = new RegExp(['Action', 'recommandée'].join(' '));
+
   it('renders the empty state', () => {
     render(
       <EmptyState
@@ -85,9 +93,39 @@ describe('orders dashboard components', () => {
       />
     );
 
+    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'Commande',
+      'Client',
+      'Statut'
+    ]);
+    expect(screen.queryByRole('columnheader', { name: 'Snack' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Retrait' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Total' })).not.toBeInTheDocument();
+    expect(screen.getByText('Commande #ORDER-ID')).toBeInTheDocument();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: 'Snack Campus' })).toBeInTheDocument();
     expect(screen.getByText('Confirmée')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Ouvrir$/ })).not.toBeInTheDocument();
+  });
+
+  it('selects an order from the merchant table with click and keyboard', async () => {
+    const user = userEvent.setup();
+    const onSelectOrder = vi.fn();
+
+    render(<OrdersTable orders={[createMerchantOrder()]} onSelectOrder={onSelectOrder} />);
+
+    const orderRow = screen.getByRole('button', {
+      name: 'Ouvrir la commande ORDER-ID de Ada Lovelace'
+    });
+
+    await user.click(orderRow);
+    expect(onSelectOrder).toHaveBeenCalledWith('order-id');
+
+    orderRow.focus();
+    await user.keyboard('{Enter}');
+    expect(onSelectOrder).toHaveBeenCalledWith('order-id');
+
+    await user.keyboard(' ');
+    expect(onSelectOrder).toHaveBeenCalledWith('order-id');
   });
 
   it('renders the orders summary counters', () => {
@@ -104,7 +142,7 @@ describe('orders dashboard components', () => {
 
     expect(screen.getByText('Total actionnable')).toBeInTheDocument();
     expect(screen.getByText('Prêtes')).toBeInTheDocument();
-    expect(screen.getByText('En préparation')).toBeInTheDocument();
+    expect(screen.getByText('Préparation')).toBeInTheDocument();
   });
 
   it('updates toolbar search and status filters', async () => {
@@ -128,7 +166,22 @@ describe('orders dashboard components', () => {
 
     expect(onSearchChange).toHaveBeenCalled();
     expect(onStatusChange).toHaveBeenCalledWith('READY');
+    expect(screen.getByRole('option', { name: 'Attente' })).toHaveValue(
+      'WAITING_PULL_CONFIRMATION'
+    );
     expect(screen.getByText('0 résultat(s) affiché(s) sur 3 commande(s).')).toBeInTheDocument();
+  });
+
+  it('renders the waiting status with the short dashboard label', () => {
+    render(
+      <OrdersTable
+        orders={[createMerchantOrder({ status: 'WAITING_PULL_CONFIRMATION' })]}
+        onSelectOrder={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Attente')).toBeInTheDocument();
+    expect(screen.queryByText(deprecatedWaitingLabel)).not.toBeInTheDocument();
   });
 
   it('shows the expected status action for a confirmed order', async () => {
@@ -174,5 +227,37 @@ describe('orders dashboard components', () => {
       code: '1234',
       snackId: 'snack-id'
     });
+  });
+
+  it('renders the incorrect withdrawal code API message', () => {
+    render(
+      <WithdrawalValidationForm
+        apiError="Le code de retrait est incorrect."
+        isSubmitting={false}
+        snackId="snack-id"
+        onValidate={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Le code de retrait est incorrect.');
+  });
+
+  it('does not render snack or Actions sections in the order detail panel', () => {
+    render(
+      <OrderDetailPanel
+        isDetailLoading={false}
+        isStatusUpdating={false}
+        isWithdrawalSubmitting={false}
+        order={createMerchantOrder()}
+        onUpdateStatus={vi.fn()}
+        onValidateWithdrawal={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('heading', { name: 'Actions' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Snack')).not.toBeInTheDocument();
+    expect(screen.queryByText('Snack Campus')).not.toBeInTheDocument();
+    expect(screen.getByText('ada@grabgo.test')).toBeInTheDocument();
+    expect(screen.queryByText(deprecatedRecommendedActionLabel)).not.toBeInTheDocument();
   });
 });
