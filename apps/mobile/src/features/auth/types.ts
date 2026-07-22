@@ -24,4 +24,11 @@ export type LoginPayload = {
   password: string;
 };
 
+export type RegisterPayload = {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+};
+
 export type AuthResponse = z.infer<typeof authResponseSchema>;

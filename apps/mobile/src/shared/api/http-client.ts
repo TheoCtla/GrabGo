@@ -40,6 +40,10 @@ function getApiErrorMessage(payload: unknown, fallback: string): string {
   return apiError.message ?? apiError.error ?? fallback;
 }
 
+function getNetworkErrorMessage(): string {
+  return `Impossible de joindre l'API GrabGo (${appConfig.apiBaseUrl}). Sur iPhone, utilisez l'adresse IP locale du Mac plutôt que localhost.`;
+}
+
 export async function httpClient<TResponse>(
   endpoint: string,
   options: HttpRequestOptions<TResponse> = {}
@@ -57,11 +61,21 @@ export async function httpClient<TResponse>(
     headers.set('Authorization', `Bearer ${session.accessToken}`);
   }
 
-  const response = await fetch(`${appConfig.apiBaseUrl}${endpoint}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${appConfig.apiBaseUrl}${endpoint}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new ApiError(getNetworkErrorMessage(), 0, error);
+    }
+
+    throw error;
+  }
 
   const payload = await parseResponse(response);
 

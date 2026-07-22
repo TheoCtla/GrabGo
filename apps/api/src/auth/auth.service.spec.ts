@@ -103,6 +103,53 @@ describe('AuthService', () => {
     expect(usersServiceMock.createUser).not.toHaveBeenCalled();
   });
 
+  it('registerStudent forces the student role and returns a safe session', async () => {
+    usersServiceMock.findByEmail.mockResolvedValue(null);
+    usersServiceMock.createUser.mockImplementation((data) =>
+      Promise.resolve({
+        ...user,
+        passwordHash: data.passwordHash,
+        role: data.role ?? Role.MERCHANT
+      })
+    );
+
+    const response = await service.registerStudent({
+      email: user.email,
+      password: 'StrongPassword123',
+      firstName: user.firstName,
+      lastName: user.lastName
+    });
+
+    const createPayload = usersServiceMock.createUser.mock.calls[0]?.[0];
+
+    if (!createPayload) {
+      throw new Error('Expected createUser to be called');
+    }
+
+    expect(createPayload.role).toBe(Role.STUDENT);
+    expect(createPayload.passwordHash).not.toBe('StrongPassword123');
+    await expect(argon2.verify(createPayload.passwordHash, 'StrongPassword123')).resolves.toBe(
+      true
+    );
+    expect(response.accessToken).toBe('signed-token');
+    expect(response.user.role).toBe(Role.STUDENT);
+    expect(response.user).not.toHaveProperty('passwordHash');
+  });
+
+  it('registerStudent refuses an already used email', async () => {
+    usersServiceMock.findByEmail.mockResolvedValue(user);
+
+    await expect(
+      service.registerStudent({
+        email: user.email,
+        password: 'StrongPassword123',
+        firstName: user.firstName,
+        lastName: user.lastName
+      })
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(usersServiceMock.createUser).not.toHaveBeenCalled();
+  });
+
   it('login returns a token for valid credentials', async () => {
     const passwordHash = await argon2.hash('StrongPassword123');
     usersServiceMock.findByEmail.mockResolvedValue({
