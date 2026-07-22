@@ -1,7 +1,8 @@
 export const endpoints = {
   auth: {
     login: '/auth/login',
-    me: '/auth/me'
+    me: '/auth/me',
+    registerStudent: '/auth/register/student'
   },
   catalog: {
     campuses: '/campuses',

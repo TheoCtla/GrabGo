@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppCard } from '../../../shared/components/AppCard';
+import { mobileColors } from '../../../shared/theme/colors';
 import { Product } from '../types';
 import { formatCents } from '../utils/catalog-formatters';
 
@@ -44,23 +45,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   muted: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   price: {
-    color: '#1f7a5c',
+    color: mobileColors.dark,
     fontWeight: '800'
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     flex: 1,
     fontSize: 18,
     fontWeight: '800'
   },
   warning: {
-    color: '#8a2417',
+    color: mobileColors.dark,
     fontWeight: '700'
   }
 });

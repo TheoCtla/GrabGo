@@ -1,4 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { mobileColors } from '../theme/colors';
 
 type LoadingStateProps = {
   message?: string;
@@ -7,7 +8,7 @@ type LoadingStateProps = {
 export function LoadingState({ message = 'Chargement en cours...' }: LoadingStateProps) {
   return (
     <View accessibilityRole="progressbar" style={styles.state}>
-      <ActivityIndicator color="#1f7a5c" />
+      <ActivityIndicator color={mobileColors.accent} />
       <Text style={styles.text}>{message}</Text>
     </View>
   );
@@ -20,6 +21,6 @@ const styles = StyleSheet.create({
     padding: 20
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.light
   }
 });

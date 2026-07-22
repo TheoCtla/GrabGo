@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { OrderConfirmationCard } from '../components/OrderConfirmationCard';
 import { Order } from '../types';
 
@@ -35,10 +36,10 @@ const styles = StyleSheet.create({
     gap: 6
   },
   subtitle: {
-    color: '#5f6c65'
+    color: mobileColors.light
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }

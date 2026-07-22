@@ -1,4 +1,4 @@
-import { FormEvent, useId, useState } from 'react';
+import { ChangeEvent, FormEvent } from 'react';
 import { Button } from '../../../shared/components/Button';
 import { TextInput } from '../../../shared/components/TextInput';
 import { ValidateWithdrawalPayload } from '../types';
@@ -16,19 +16,46 @@ export function WithdrawalValidationForm({
   snackId,
   onValidate
 }: WithdrawalValidationFormProps) {
-  const codeId = useId();
-  const [code, setCode] = useState('');
-  const [validationError, setValidationError] = useState<string | undefined>();
+  const codeId = 'withdrawal-code';
+  const errorId = 'withdrawal-code-error';
+
+  function hideValidationError() {
+    const errorElement = document.getElementById(errorId);
+
+    if (errorElement) {
+      errorElement.hidden = true;
+    }
+  }
+
+  function showValidationError() {
+    const errorElement = document.getElementById(errorId);
+
+    if (errorElement) {
+      errorElement.hidden = false;
+    }
+  }
+
+  function handleCodeChange(event: ChangeEvent<HTMLInputElement>) {
+    event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
+    hideValidationError();
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const codeInput = event.currentTarget.elements.namedItem(codeId);
 
-    if (!/^\d{4}$/.test(code)) {
-      setValidationError('Le code de retrait doit contenir exactement 4 chiffres.');
+    if (!(codeInput instanceof HTMLInputElement)) {
       return;
     }
 
-    setValidationError(undefined);
+    const code = codeInput.value;
+
+    if (!/^\d{4}$/.test(code)) {
+      showValidationError();
+      return;
+    }
+
+    hideValidationError();
     onValidate({
       code,
       snackId
@@ -43,14 +70,12 @@ export function WithdrawalValidationForm({
         inputMode="numeric"
         pattern="[0-9]{4}"
         maxLength={4}
-        value={code}
-        onChange={(event) => {
-          setCode(event.target.value.replace(/\D/g, '').slice(0, 4));
-          setValidationError(undefined);
-        }}
-        error={validationError}
+        onChange={handleCodeChange}
         required
       />
+      <p id={errorId} className="form-error" role="alert" hidden>
+        Le code de retrait doit contenir exactement 4 chiffres.
+      </p>
       {apiError ? (
         <p className="form-error" role="alert">
           {apiError}

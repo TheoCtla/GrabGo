@@ -5,6 +5,7 @@ import { ApiError } from '../../../shared/api/api-error';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppTextInput } from '../../../shared/components/AppTextInput';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { Slot } from '../../catalog/types';
 import { createOrder, paySimulatedOrder } from '../api/orders.api';
 import { CartSummary } from '../components/CartSummary';
@@ -77,7 +78,6 @@ export function CheckoutScreen({
   return (
     <Screen>
       <View style={styles.heading}>
-        <AppButton label="Retour" onPress={onBack} variant="ghost" />
         <Text accessibilityRole="header" style={styles.title}>
           Validation
         </Text>
@@ -123,39 +123,40 @@ export function CheckoutScreen({
           checkoutMutation.mutate();
         }}
       />
+      <AppButton label="Retour" onPress={onBack} variant="ghost" />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   error: {
-    color: '#b42318',
+    color: mobileColors.light,
     fontWeight: '800'
   },
   heading: {
     gap: 6
   },
   slotBox: {
-    backgroundColor: '#ffffff',
-    borderColor: '#d7d8d1',
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent,
     borderRadius: 8,
     borderWidth: 1,
     gap: 8,
     padding: 16
   },
   slotText: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   slotTitle: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   },
   subtitle: {
-    color: '#5f6c65'
+    color: mobileColors.light
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }

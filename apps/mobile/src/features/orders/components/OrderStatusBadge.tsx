@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { mobileColors } from '../../../shared/theme/colors';
 import { OrderStatus } from '../types';
 import { getOrderStatusLabel } from '../utils/order-status';
 
@@ -17,15 +18,15 @@ export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
 const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e8f3ee',
-    borderColor: '#9bc4b4',
+    backgroundColor: mobileColors.accent,
+    borderColor: mobileColors.accent,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
   text: {
-    color: '#1f4d3f',
+    color: mobileColors.dark,
     fontWeight: '800'
   }
 });

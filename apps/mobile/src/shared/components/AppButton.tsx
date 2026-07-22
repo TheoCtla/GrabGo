@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import { mobileColors } from '../theme/colors';
 
 type AppButtonProps = {
   label: string;
   accessibilityLabel?: string;
   disabled?: boolean;
   isLoading?: boolean;
+  style?: StyleProp<ViewStyle>;
   variant?: 'primary' | 'secondary' | 'ghost';
   onPress: () => void;
 };
@@ -15,9 +17,16 @@ export function AppButton({
   isLoading = false,
   label,
   onPress,
+  style,
   variant = 'primary'
 }: AppButtonProps) {
   const isDisabled = disabled || isLoading;
+  const labelStyle =
+    variant === 'primary'
+      ? styles.primaryLabel
+      : variant === 'secondary'
+        ? styles.secondaryLabel
+        : styles.ghostLabel;
 
   return (
     <Pressable
@@ -29,14 +38,11 @@ export function AppButton({
         styles.button,
         styles[variant],
         isDisabled ? styles.disabled : null,
-        pressed ? styles.pressed : null
+        pressed ? styles.pressed : null,
+        style
       ]}
     >
-      <Text
-        style={[styles.label, variant === 'primary' ? styles.primaryLabel : styles.secondaryLabel]}
-      >
-        {isLoading ? 'Chargement...' : label}
-      </Text>
+      <Text style={[styles.label, labelStyle]}>{isLoading ? 'Chargement...' : label}</Text>
     </Pressable>
   );
 }
@@ -55,8 +61,11 @@ const styles = StyleSheet.create({
     opacity: 0.6
   },
   ghost: {
-    backgroundColor: 'transparent',
-    borderColor: '#9bc4b4'
+    backgroundColor: mobileColors.dark,
+    borderColor: mobileColors.accent
+  },
+  ghostLabel: {
+    color: mobileColors.light
   },
   label: {
     fontSize: 16,
@@ -66,17 +75,17 @@ const styles = StyleSheet.create({
     opacity: 0.82
   },
   primary: {
-    backgroundColor: '#1f7a5c',
-    borderColor: '#1f7a5c'
+    backgroundColor: mobileColors.accent,
+    borderColor: mobileColors.accent
   },
   primaryLabel: {
-    color: '#ffffff'
+    color: mobileColors.dark
   },
   secondary: {
-    backgroundColor: '#e8f3ee',
-    borderColor: '#9bc4b4'
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent
   },
   secondaryLabel: {
-    color: '#1f4d3f'
+    color: mobileColors.dark
   }
 });

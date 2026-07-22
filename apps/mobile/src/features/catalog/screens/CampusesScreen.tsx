@@ -5,6 +5,7 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { getCampuses } from '../api/catalog.api';
 import { CampusCard } from '../components/CampusCard';
 import { Campus } from '../types';
@@ -23,7 +24,6 @@ export function CampusesScreen({ onBack, onSelectCampus }: CampusesScreenProps) 
   return (
     <Screen>
       <View style={styles.heading}>
-        <AppButton label="Retour" onPress={onBack} variant="ghost" />
         <Text accessibilityRole="header" style={styles.title}>
           Campus
         </Text>
@@ -46,6 +46,7 @@ export function CampusesScreen({ onBack, onSelectCampus }: CampusesScreenProps) 
       {campusesQuery.data?.map((campus) => (
         <CampusCard key={campus.id} campus={campus} onSelect={onSelectCampus} />
       ))}
+      <AppButton label="Retour" onPress={onBack} variant="ghost" />
     </Screen>
   );
 }
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     gap: 12
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }

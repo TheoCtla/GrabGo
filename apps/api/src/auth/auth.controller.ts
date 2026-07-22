@@ -3,6 +3,7 @@ import { AuthService, AuthResponse } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterStudentDto } from './dto/register-student.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthenticatedUser } from './types/authenticated-user.type';
 
@@ -13,6 +14,11 @@ export class AuthController {
   @Post('register')
   register(@Body() dto: RegisterDto): Promise<AuthResponse> {
     return this.authService.register(dto);
+  }
+
+  @Post('register/student')
+  registerStudent(@Body() dto: RegisterStudentDto): Promise<AuthResponse> {
+    return this.authService.registerStudent(dto);
   }
 
   @Post('login')

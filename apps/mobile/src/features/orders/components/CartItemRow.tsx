@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
+import { mobileColors } from '../../../shared/theme/colors';
 import { CartItem } from '../state/cart-context';
 import { formatCents } from '../utils/order-formatters';
 
@@ -22,18 +23,26 @@ export function CartItemRow({ item, onDecrease, onIncrease, onRemove }: CartItem
       </View>
       <View style={styles.actions}>
         <AppButton
-          accessibilityLabel={`Retirer un ${item.name}`}
-          label="-"
+          accessibilityLabel={`Retirer 1 ${item.name}`}
+          label="-1"
           onPress={onDecrease}
+          style={styles.quantityButton}
           variant="secondary"
         />
         <AppButton
-          accessibilityLabel={`Ajouter un ${item.name}`}
-          label="+"
+          accessibilityLabel={`Ajouter 1 ${item.name}`}
+          label="+1"
           onPress={onIncrease}
+          style={styles.quantityButton}
           variant="secondary"
         />
-        <AppButton label="Supprimer" onPress={onRemove} variant="ghost" />
+        <AppButton
+          accessibilityLabel={`Supprimer l'article ${item.name}`}
+          label="Supprimer"
+          onPress={onRemove}
+          style={styles.removeButton}
+          variant="ghost"
+        />
       </View>
     </View>
   );
@@ -41,6 +50,7 @@ export function CartItemRow({ item, onDecrease, onIncrease, onRemove }: CartItem
 
 const styles = StyleSheet.create({
   actions: {
+    flexDirection: 'row',
     gap: 8
   },
   info: {
@@ -48,21 +58,27 @@ const styles = StyleSheet.create({
     gap: 4
   },
   meta: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   name: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 17,
     fontWeight: '800'
   },
   row: {
-    borderBottomColor: '#e4e0d8',
+    borderBottomColor: mobileColors.accent,
     borderBottomWidth: 1,
     gap: 12,
     paddingBottom: 14
   },
   total: {
-    color: '#1f7a5c',
+    color: mobileColors.dark,
     fontWeight: '800'
+  },
+  removeButton: {
+    flex: 1
+  },
+  quantityButton: {
+    width: 64
   }
 });

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { mobileColors } from '../theme/colors';
 
 type EmptyStateProps = {
   title: string;
@@ -18,18 +19,18 @@ export function EmptyState({ title, message }: EmptyStateProps) {
 
 const styles = StyleSheet.create({
   message: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   state: {
     gap: 8,
     padding: 16,
-    backgroundColor: '#ffffff',
-    borderColor: '#d7d8d1',
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent,
     borderRadius: 8,
     borderWidth: 1
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   }

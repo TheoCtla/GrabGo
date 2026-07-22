@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
 import { AppTextInput } from '../../../shared/components/AppTextInput';
+import { mobileColors } from '../../../shared/theme/colors';
 import { LoginPayload } from '../types';
 import { validateLoginFields } from '../utils/auth-role';
 
@@ -68,7 +69,7 @@ export function LoginForm({ error, isSubmitting, onSubmit }: LoginFormProps) {
 
 const styles = StyleSheet.create({
   error: {
-    color: '#b42318',
+    color: mobileColors.light,
     fontWeight: '700'
   }
 });

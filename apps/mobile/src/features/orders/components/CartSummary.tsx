@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppCard } from '../../../shared/components/AppCard';
+import { mobileColors } from '../../../shared/theme/colors';
 import { CartItem, CartSnack } from '../state/cart-context';
 import { formatCents } from '../utils/order-formatters';
 
@@ -45,7 +46,7 @@ export function CartSummary({
 
 const styles = StyleSheet.create({
   amount: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontWeight: '700'
   },
   line: {
@@ -53,20 +54,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   text: {
-    color: '#33443c'
+    color: mobileColors.dark
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   },
   total: {
-    color: '#1f7a5c',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '900'
   },
   totalLabel: {
-    color: '#17201b',
+    color: mobileColors.dark,
     fontWeight: '900'
   }
 });

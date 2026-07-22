@@ -10,6 +10,7 @@ import * as argon2 from 'argon2';
 import { SafeUser, toSafeUser, UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterStudentDto } from './dto/register-student.dto';
 import { JwtPayload } from './types/jwt-payload.type';
 
 export type AuthResponse = {
@@ -25,14 +26,35 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
+    if (dto.role === Role.ADMIN) {
+      throw new BadRequestException('Role is not allowed for public registration');
+    }
+
+    return this.registerUser({
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      role: dto.role ?? Role.STUDENT,
+      phone: dto.phone
+    });
+  }
+
+  async registerStudent(dto: RegisterStudentDto): Promise<AuthResponse> {
+    return this.registerUser({
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      role: Role.STUDENT
+    });
+  }
+
+  private async registerUser(dto: RegisterDto & { role: Role }): Promise<AuthResponse> {
     const existingUser = await this.usersService.findByEmail(dto.email);
 
     if (existingUser) {
       throw new ConflictException('Email already used');
-    }
-
-    if (dto.role === Role.ADMIN) {
-      throw new BadRequestException('Role is not allowed for public registration');
     }
 
     const passwordHash = await argon2.hash(dto.password);
@@ -41,7 +63,7 @@ export class AuthService {
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      role: dto.role ?? Role.STUDENT,
+      role: dto.role,
       phone: dto.phone
     });
 

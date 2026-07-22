@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from './AppButton';
+import { mobileColors } from '../theme/colors';
 
 type ErrorStateProps = {
   title: string;
@@ -24,18 +25,18 @@ export function ErrorState({ actionLabel, message, onAction, title }: ErrorState
 
 const styles = StyleSheet.create({
   message: {
-    color: '#5f6c65'
+    color: mobileColors.dark
   },
   state: {
     gap: 10,
     padding: 16,
-    backgroundColor: '#fff7f5',
-    borderColor: '#f0b5aa',
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent,
     borderRadius: 8,
     borderWidth: 1
   },
   title: {
-    color: '#8a2417',
+    color: mobileColors.dark,
     fontSize: 18,
     fontWeight: '800'
   }

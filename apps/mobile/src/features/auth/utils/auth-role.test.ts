@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../../shared/api/api-error';
 import { AuthResponse } from '../types';
-import { ensureStudentSession, validateLoginFields } from './auth-role';
+import { ensureStudentSession, validateLoginFields, validateRegisterFields } from './auth-role';
 
 function createAuthResponse(role: AuthResponse['user']['role']): AuthResponse {
   return {
@@ -38,5 +38,38 @@ describe('student auth role helpers', () => {
     expect(validateLoginFields('', '')).toBe('Email et mot de passe sont obligatoires.');
     expect(validateLoginFields('student', 'Password123!')).toBe('Adresse email invalide.');
     expect(validateLoginFields('student.test@grabgo.local', 'Password123!')).toBeUndefined();
+  });
+
+  it('validates register fields', () => {
+    const validFields = {
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      email: 'ada@grabgo.test',
+      password: 'Password123!',
+      passwordConfirmation: 'Password123!'
+    };
+
+    expect(validateRegisterFields({ ...validFields, firstName: '' })).toBe(
+      'Le prénom est obligatoire.'
+    );
+    expect(validateRegisterFields({ ...validFields, lastName: '' })).toBe(
+      'Le nom est obligatoire.'
+    );
+    expect(validateRegisterFields({ ...validFields, email: '' })).toBe(
+      "L'adresse email est obligatoire."
+    );
+    expect(validateRegisterFields({ ...validFields, email: 'ada' })).toBe(
+      'Adresse email invalide.'
+    );
+    expect(validateRegisterFields({ ...validFields, password: '' })).toBe(
+      'Le mot de passe est obligatoire.'
+    );
+    expect(validateRegisterFields({ ...validFields, passwordConfirmation: '' })).toBe(
+      'La confirmation du mot de passe est obligatoire.'
+    );
+    expect(
+      validateRegisterFields({ ...validFields, passwordConfirmation: 'OtherPassword123!' })
+    ).toBe('Les mots de passe ne correspondent pas.');
+    expect(validateRegisterFields(validFields)).toBeUndefined();
   });
 });

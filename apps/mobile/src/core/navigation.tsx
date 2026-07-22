@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../shared/auth/auth-context';
 import { LoadingState } from '../shared/components/LoadingState';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
+import { RegisterScreen } from '../features/auth/screens/RegisterScreen';
 import { CampusesScreen } from '../features/catalog/screens/CampusesScreen';
 import { SnacksScreen } from '../features/catalog/screens/SnacksScreen';
 import { SnackDetailScreen } from '../features/catalog/screens/SnackDetailScreen';
@@ -26,9 +27,12 @@ type MobileRoute =
   | 'confirmation'
   | 'order-detail';
 
+type AuthRoute = 'register' | 'login';
+
 export function AppNavigation() {
   const { isAuthenticated, isBootstrapping } = useAuth();
   const { state: cartState } = useCart();
+  const [authRoute, setAuthRoute] = useState<AuthRoute>('register');
   const [route, setRoute] = useState<MobileRoute>('home');
   const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
   const [selectedSnack, setSelectedSnack] = useState<Snack | null>(null);
@@ -41,7 +45,11 @@ export function AppNavigation() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    if (authRoute === 'login') {
+      return <LoginScreen onShowRegister={() => setAuthRoute('register')} />;
+    }
+
+    return <RegisterScreen onShowLogin={() => setAuthRoute('login')} />;
   }
 
   if (route === 'campuses') {
@@ -78,11 +86,6 @@ export function AppNavigation() {
         snack={selectedSnack}
         onBack={() => setRoute('snacks')}
         onViewCart={() => setRoute('cart')}
-        onViewSlots={(snack) => {
-          setSelectedSnack(snack);
-          setSelectedSlot(null);
-          setRoute('slots');
-        }}
       />
     );
   }
@@ -167,7 +170,6 @@ export function AppNavigation() {
       onBrowseCampuses={() => {
         setRoute('campuses');
       }}
-      onViewCart={() => setRoute('cart')}
     />
   );
 }

@@ -5,6 +5,7 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import { ErrorState } from '../../../shared/components/ErrorState';
 import { LoadingState } from '../../../shared/components/LoadingState';
 import { Screen } from '../../../shared/components/Screen';
+import { mobileColors } from '../../../shared/theme/colors';
 import { getSnacks } from '../api/catalog.api';
 import { SnackCard } from '../components/SnackCard';
 import { Campus, Snack } from '../types';
@@ -24,7 +25,6 @@ export function SnacksScreen({ campus, onBack, onSelectSnack }: SnacksScreenProp
   return (
     <Screen>
       <View style={styles.heading}>
-        <AppButton label="Retour" onPress={onBack} variant="ghost" />
         <Text accessibilityRole="header" style={styles.title}>
           Snacks
         </Text>
@@ -51,6 +51,7 @@ export function SnacksScreen({ campus, onBack, onSelectSnack }: SnacksScreenProp
       {snacksQuery.data?.map((snack) => (
         <SnackCard key={snack.id} snack={snack} onSelect={onSelectSnack} />
       ))}
+      <AppButton label="Retour" onPress={onBack} variant="ghost" />
     </Screen>
   );
 }
@@ -60,10 +61,10 @@ const styles = StyleSheet.create({
     gap: 6
   },
   subtitle: {
-    color: '#5f6c65'
+    color: mobileColors.light
   },
   title: {
-    color: '#17201b',
+    color: mobileColors.light,
     fontSize: 28,
     fontWeight: '900'
   }
