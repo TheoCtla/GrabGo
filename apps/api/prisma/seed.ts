@@ -3,7 +3,9 @@ import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
-const TEST_PASSWORD = 'Password123!';
+const SEED_PASSWORD = 'test1234';
+const STUDENT_EMAIL = 'etudiant@test.com';
+const MERCHANT_EMAIL = 'snack@test.com';
 const SLOT_DURATION_MS = 15 * 60 * 1000;
 const SEEDED_SLOT_COUNT = 6;
 
@@ -44,7 +46,7 @@ function getFreshSlotStarts(): Date[] {
 }
 
 async function main() {
-  const passwordHash = await argon2.hash(TEST_PASSWORD);
+  const passwordHash = await argon2.hash(SEED_PASSWORD);
 
   const campus = await prisma.campus.upsert({
     where: {
@@ -65,20 +67,20 @@ async function main() {
 
   const student = await prisma.user.upsert({
     where: {
-      email: 'student.test@grabgo.local'
+      email: STUDENT_EMAIL
     },
     update: {
       passwordHash,
-      firstName: 'Ada',
-      lastName: 'Lovelace',
+      firstName: 'Etudiant',
+      lastName: 'Test',
       role: Role.STUDENT,
       isActive: true
     },
     create: {
-      email: 'student.test@grabgo.local',
+      email: STUDENT_EMAIL,
       passwordHash,
-      firstName: 'Ada',
-      lastName: 'Lovelace',
+      firstName: 'Etudiant',
+      lastName: 'Test',
       role: Role.STUDENT,
       isActive: true
     }
@@ -86,20 +88,20 @@ async function main() {
 
   const merchantUser = await prisma.user.upsert({
     where: {
-      email: 'merchant.test@grabgo.local'
+      email: MERCHANT_EMAIL
     },
     update: {
       passwordHash,
-      firstName: 'Marco',
-      lastName: 'Snack',
+      firstName: 'Snack',
+      lastName: 'Test',
       role: Role.MERCHANT,
       isActive: true
     },
     create: {
-      email: 'merchant.test@grabgo.local',
+      email: MERCHANT_EMAIL,
       passwordHash,
-      firstName: 'Marco',
-      lastName: 'Snack',
+      firstName: 'Snack',
+      lastName: 'Test',
       role: Role.MERCHANT,
       isActive: true
     }
@@ -132,13 +134,13 @@ async function main() {
       status: SnackStatus.ONLINE,
       circuitBreaker: false,
       snoozedUntil: null,
-      description: 'Snack de test pour le parcours Postman GrabGo.'
+      description: 'Snack de test pour le parcours GrabGo.'
     },
     create: {
       merchantId: merchant.id,
       campusId: campus.id,
       name: 'Snack Campus Test',
-      description: 'Snack de test pour le parcours Postman GrabGo.',
+      description: 'Snack de test pour le parcours GrabGo.',
       status: SnackStatus.ONLINE,
       circuitBreaker: false,
       snoozedUntil: null
@@ -252,29 +254,16 @@ async function main() {
     ? new Date(slotStarts[slotStarts.length - 1].getTime() + SLOT_DURATION_MS).toISOString()
     : undefined;
 
-  const counts = await Promise.all([
-    prisma.campus.count(),
-    prisma.user.count(),
-    prisma.merchant.count(),
-    prisma.snack.count(),
-    prisma.product.count(),
-    prisma.slot.count(),
-    prisma.order.count(),
-    prisma.payment.count(),
-    prisma.withdrawalCode.count()
-  ]);
-
-  const [
-    campusCount,
-    userCount,
-    merchantCount,
-    snackCount,
-    productCount,
-    slotCount,
-    orderCount,
-    paymentCount,
-    withdrawalCodeCount
-  ] = counts;
+  const [campusCount, userCount, merchantCount, snackCount, productCount, slotCount, orderCount] =
+    await Promise.all([
+      prisma.campus.count(),
+      prisma.user.count(),
+      prisma.merchant.count(),
+      prisma.snack.count(),
+      prisma.product.count(),
+      prisma.slot.count(),
+      prisma.order.count()
+    ]);
 
   console.log('GrabGo development seed completed.');
   console.log({
@@ -291,9 +280,7 @@ async function main() {
     snackCount,
     productCount,
     slotCount,
-    orderCount,
-    paymentCount,
-    withdrawalCodeCount
+    orderCount
   });
 }
 

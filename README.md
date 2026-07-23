@@ -81,7 +81,7 @@ Appliquer les migrations Prisma :
 npm run prisma:migrate -w apps/api
 ```
 
-Charger les donnees de demonstration :
+Initialiser les donnees minimales de demonstration :
 
 ```bash
 npm run prisma:seed -w apps/api
@@ -120,15 +120,14 @@ npm run docker:up
 ```
 
 Le service `api` attend que PostgreSQL soit healthy, applique les migrations avec
-`prisma migrate deploy`, puis demarre NestJS sur :
+`prisma migrate deploy`, execute le seed Prisma idempotent, puis demarre NestJS sur :
 
 ```text
 http://localhost:3000/api
 ```
 
-Le seed n'est pas automatise au demarrage du conteneur pour eviter de modifier les
-donnees a chaque lancement. Pour charger les donnees de demonstration dans la base
-Docker :
+Le seed est automatise au demarrage du conteneur API afin que l'environnement Docker
+soit utilisable directement. Il peut aussi etre relance manuellement :
 
 ```bash
 docker compose exec api npm run prisma:seed -w apps/api
@@ -211,8 +210,8 @@ npm run docker:down
 
 Le seed Prisma cree des donnees idempotentes pour les tests manuels :
 
-- etudiant : `student.test@grabgo.local` / `Password123!`
-- commercant : `merchant.test@grabgo.local` / `Password123!`
+- etudiant : `etudiant@test.com` / `test1234`
+- commercant : `snack@test.com` / `test1234`
 - campus de demonstration ;
 - snack en ligne ;
 - produits disponibles ;
