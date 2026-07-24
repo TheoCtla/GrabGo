@@ -20,7 +20,7 @@ export function Screen({ children, scroll = true, stickyHeaderIndices }: ScreenP
           {children}
         </ScrollView>
       ) : (
-        <View style={styles.content}>{children}</View>
+        <View style={[styles.content, styles.fixedContent]}>{children}</View>
       )}
     </SafeAreaView>
   );
@@ -35,5 +35,8 @@ const styles = StyleSheet.create({
     backgroundColor: mobileColors.dark,
     gap: 16,
     padding: 20
+  },
+  fixedContent: {
+    flex: 1
   }
 });

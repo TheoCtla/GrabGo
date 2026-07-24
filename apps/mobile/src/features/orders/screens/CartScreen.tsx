@@ -1,6 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../../shared/components/AppButton';
-import { AppCard } from '../../../shared/components/AppCard';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { Screen } from '../../../shared/components/Screen';
 import { mobileColors } from '../../../shared/theme/colors';
@@ -19,7 +18,7 @@ export function CartScreen({ onBack, onBrowseCampuses, onChooseSlot }: CartScree
     useCart();
 
   return (
-    <Screen>
+    <Screen scroll={false}>
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>
           Panier
@@ -35,40 +34,48 @@ export function CartScreen({ onBack, onBrowseCampuses, onChooseSlot }: CartScree
           message="Ajoutez des produits depuis le détail d'un snack."
         />
       ) : (
-        <AppCard>
-          {state.items.map((item) => (
-            <CartItemRow
-              key={item.productId}
-              item={item}
-              onDecrease={() => decreaseQuantity(item.productId)}
-              onIncrease={() => {
-                if (!state.snack) {
-                  return;
-                }
+        <View style={styles.itemsCard}>
+          <ScrollView
+            contentContainerStyle={styles.itemsList}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={state.items.length > 2}
+          >
+            {state.items.map((item) => (
+              <CartItemRow
+                key={item.productId}
+                item={item}
+                onDecrease={() => decreaseQuantity(item.productId)}
+                onIncrease={() => {
+                  if (!state.snack) {
+                    return;
+                  }
 
-                addProduct(
-                  {
-                    id: item.productId,
-                    name: item.name,
-                    priceCents: item.priceCents
-                  },
-                  state.snack
-                );
-              }}
-              onRemove={() => removeProduct(item.productId)}
-            />
-          ))}
-        </AppCard>
+                  addProduct(
+                    {
+                      id: item.productId,
+                      name: item.name,
+                      priceCents: item.priceCents
+                    },
+                    state.snack
+                  );
+                }}
+                onRemove={() => removeProduct(item.productId)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       )}
 
-      <CartSummary
-        items={state.items}
-        productsTotalCents={productsTotalCents}
-        snack={state.snack}
-      />
-      <AppButton disabled={itemCount === 0} label="Choisir un créneau" onPress={onChooseSlot} />
-      <AppButton label="Retour" onPress={onBack} variant="ghost" />
-      <AppButton label="Continuer mes achats" onPress={onBrowseCampuses} variant="secondary" />
+      <View style={styles.footer}>
+        <CartSummary
+          items={state.items}
+          productsTotalCents={productsTotalCents}
+          snack={state.snack}
+        />
+        <AppButton disabled={itemCount === 0} label="Choisir un créneau" onPress={onChooseSlot} />
+        <AppButton label="Retour" onPress={onBack} variant="ghost" />
+        <AppButton label="Continuer mes achats" onPress={onBrowseCampuses} variant="secondary" />
+      </View>
     </Screen>
   );
 }
@@ -76,6 +83,23 @@ export function CartScreen({ onBack, onBrowseCampuses, onChooseSlot }: CartScree
 const styles = StyleSheet.create({
   heading: {
     gap: 6
+  },
+  footer: {
+    gap: 12
+  },
+  itemsCard: {
+    backgroundColor: mobileColors.light,
+    borderColor: mobileColors.accent,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 96,
+    overflow: 'hidden',
+    padding: 16
+  },
+  itemsList: {
+    gap: 14,
+    paddingBottom: 2
   },
   subtitle: {
     color: mobileColors.light
