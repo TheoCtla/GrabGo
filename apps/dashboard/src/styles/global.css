@@ -1,7 +1,7 @@
 :root {
-  --color-background: #0F0A29;
-  --color-accent: #A68BFA;
-  --color-surface: #FFFFFF;
+  --color-background: #0f0a29;
+  --color-accent: #a68bfa;
+  --color-surface: #ffffff;
 
   color: var(--color-surface);
   background: var(--color-background);
@@ -118,12 +118,21 @@ a {
 }
 
 .content {
+  min-width: 0;
   padding: 28px;
 }
 
 .page-section {
   display: grid;
   gap: 20px;
+}
+
+.orders-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 144px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .page-heading,
@@ -265,16 +274,21 @@ a {
 }
 
 .table-wrapper {
-  overflow-x: auto;
+  align-self: stretch;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
   color: var(--color-background);
   background: var(--color-surface);
   border: 1px solid var(--color-accent);
   border-radius: 8px;
+  clip-path: inset(0 round 8px);
 }
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 th,
@@ -322,13 +336,13 @@ th {
 .orders-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .summary-tile {
   display: grid;
-  gap: 4px;
-  padding: 16px;
+  gap: 2px;
+  padding: 10px 12px;
   color: var(--color-background);
   background: var(--color-surface);
   border: 1px solid var(--color-accent);
@@ -337,22 +351,23 @@ th {
 
 .summary-tile span {
   color: var(--color-background);
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .summary-tile strong {
   color: var(--color-background);
-  font-size: 1.7rem;
+  font-size: 1.35rem;
   line-height: 1;
 }
 
 .orders-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: end;
-  padding: 16px;
+  padding: 10px 12px;
   color: var(--color-background);
   background: var(--color-surface);
   border: 1px solid var(--color-accent);
@@ -361,6 +376,8 @@ th {
 
 .orders-toolbar .field input,
 .orders-toolbar .field select {
+  min-height: 38px;
+  padding: 7px 10px;
   color: var(--color-background);
   background: var(--color-surface);
   border-color: var(--color-background);
@@ -373,14 +390,17 @@ th {
 .filter-result {
   margin: 0;
   color: var(--color-background);
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
 .orders-workspace {
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
   gap: 20px;
-  align-items: start;
+  min-height: 0;
+  align-items: stretch;
 }
 
 tr.is-selected {
@@ -422,15 +442,25 @@ tr.is-selected {
 }
 
 .order-detail-panel {
-  display: grid;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 14px;
 }
 
 .panel-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+}
+
+.panel-heading h3 {
+  font-size: 1.35rem;
+  line-height: 1.1;
 }
 
 .panel-heading h3,
@@ -438,45 +468,79 @@ tr.is-selected {
   margin: 0;
 }
 
+.detail-customer-line {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+  color: var(--color-background);
+}
+
+.detail-customer-line span {
+  font-size: 0.9rem;
+}
+
+.detail-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(160px, 0.85fr) minmax(190px, 1.15fr);
+  gap: 14px;
+  align-items: stretch;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-accent);
+}
+
+.detail-main-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 6px;
   margin: 0;
 }
 
 .detail-grid div {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 0;
   color: var(--color-background);
-  background: var(--color-surface);
-  border: 1px solid var(--color-accent);
-  border-radius: 8px;
 }
 
 .detail-grid dt {
   color: var(--color-background);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .detail-grid dd {
   margin: 0;
-}
-
-.detail-grid-email {
-  grid-column: 1 / -1;
+  text-align: right;
+  font-weight: 800;
 }
 
 .detail-section {
   display: grid;
-  gap: 10px;
+  gap: 6px;
+}
+
+.detail-actions-section {
+  padding-top: 8px;
+  border-top: 1px solid var(--color-accent);
+}
+
+.detail-section h4 {
+  font-size: 0.95rem;
 }
 
 .order-items {
   display: grid;
-  gap: 8px;
+  gap: 0;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -484,11 +548,12 @@ tr.is-selected {
 
 .order-items li {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto auto;
-  gap: 12px;
+  grid-template-columns: minmax(90px, 1fr) auto auto;
+  gap: 8px;
   align-items: center;
-  padding: 10px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--color-accent);
+  font-size: 0.9rem;
 }
 
 .order-item-name {
@@ -496,13 +561,13 @@ tr.is-selected {
 }
 
 .withdrawal-code-box {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  padding: 14px;
+  align-items: baseline;
+  padding: 4px 0;
   color: var(--color-background);
-  background: var(--color-surface);
-  border: 1px solid var(--color-accent);
-  border-radius: 8px;
+  font-size: 0.9rem;
 }
 
 .withdrawal-code-box span {
@@ -512,7 +577,7 @@ tr.is-selected {
 
 .withdrawal-code-box strong {
   color: var(--color-background);
-  font-size: 1.9rem;
+  font-size: 1.08rem;
   letter-spacing: 0;
 }
 
@@ -521,10 +586,42 @@ tr.is-selected {
   color: var(--color-background);
 }
 
+.withdrawal-validity {
+  margin: 0;
+  color: var(--color-background);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .actions-stack,
 .withdrawal-form {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+.withdrawal-form {
+  gap: 6px;
+}
+
+.withdrawal-code-field {
+  grid-template-columns: auto minmax(92px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.withdrawal-code-field label {
+  white-space: nowrap;
+}
+
+.withdrawal-code-field input {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+.withdrawal-form .button {
+  width: 100%;
+  min-height: 38px;
+  padding-block: 8px;
 }
 
 .summary-grid {
@@ -560,7 +657,13 @@ tr.is-selected {
   }
 
   .content {
+    overflow: visible;
     padding: 20px;
+  }
+
+  .orders-page {
+    height: auto;
+    overflow: visible;
   }
 
   .summary-grid {
@@ -573,8 +676,18 @@ tr.is-selected {
   }
 
   .orders-workspace,
-  .detail-grid {
+  .detail-content {
     grid-template-columns: 1fr;
+  }
+
+  .orders-workspace {
+    overflow: visible;
+  }
+
+  .table-wrapper,
+  .order-detail-panel {
+    max-height: none;
+    overflow: visible;
   }
 
   .order-items li {

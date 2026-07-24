@@ -116,7 +116,7 @@ export function MerchantOrdersPage() {
   }
 
   return (
-    <section className="page-section" aria-labelledby="orders-title">
+    <section className="page-section orders-page" aria-labelledby="orders-title">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Opérations</p>

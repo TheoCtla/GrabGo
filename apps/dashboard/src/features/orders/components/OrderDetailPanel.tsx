@@ -14,7 +14,6 @@ import {
   formatWithdrawalCodeState
 } from '../utils/order-formatters';
 import { getOrderCustomerName } from '../utils/order-filters';
-import { getNextMerchantStatusAction } from '../utils/order-status';
 import { OrderStatusActions } from './OrderStatusActions';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import { WithdrawalValidationForm } from './WithdrawalValidationForm';
@@ -44,7 +43,12 @@ export function OrderDetailPanel({
 }: OrderDetailPanelProps) {
   const displayedOrder = detail ?? order;
   const customerName = getOrderCustomerName(displayedOrder);
-  const nextAction = getNextMerchantStatusAction(displayedOrder.status);
+  const withdrawalCodeState = displayedOrder.withdrawalCode
+    ? formatWithdrawalCodeState(
+        displayedOrder.withdrawalCode.usedAt,
+        displayedOrder.withdrawalCode.expiresAt
+      ).replace(/\.$/, '')
+    : undefined;
 
   return (
     <Card className="order-detail-panel">
@@ -52,7 +56,10 @@ export function OrderDetailPanel({
         <div>
           <p className="eyebrow">Commande sélectionnée</p>
           <h3>#{formatOrderShortId(displayedOrder.id)}</h3>
-          <p className="muted">{customerName}</p>
+          <p className="detail-customer-line">
+            <strong>{customerName}</strong>
+            <span>{displayedOrder.user.email}</span>
+          </p>
         </div>
         <OrderStatusBadge status={displayedOrder.status} />
       </div>
@@ -61,88 +68,77 @@ export function OrderDetailPanel({
         <LoadingState message="Chargement du détail..." />
       ) : (
         <>
-          <dl className="detail-grid">
-            <div>
-              <dt>Identifiant</dt>
-              <dd>#{formatOrderShortId(displayedOrder.id)}</dd>
-            </div>
-            <div>
-              <dt>Client</dt>
-              <dd>
-                {displayedOrder.user.firstName} {displayedOrder.user.lastName}
-              </dd>
-            </div>
-            <div className="detail-grid-email">
-              <dt>Email</dt>
-              <dd>{displayedOrder.user.email}</dd>
-            </div>
-            <div>
-              <dt>Créneau</dt>
-              <dd>{formatPickupWindow(displayedOrder.slot.startAt, displayedOrder.slot.endAt)}</dd>
-            </div>
-            <div>
-              <dt>Créée le</dt>
-              <dd>{formatDateTime(displayedOrder.createdAt)}</dd>
-            </div>
-            <div>
-              <dt>Total</dt>
-              <dd>{formatCents(displayedOrder.totalCents)}</dd>
-            </div>
-            <div>
-              <dt>Action suivante</dt>
-              <dd>{nextAction?.label ?? 'Aucune action disponible'}</dd>
-            </div>
-          </dl>
+          <div className="detail-content">
+            <div className="detail-main-column">
+              <dl className="detail-grid">
+                <div>
+                  <dt>Créneau</dt>
+                  <dd>
+                    {formatPickupWindow(displayedOrder.slot.startAt, displayedOrder.slot.endAt)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Créée le</dt>
+                  <dd>{formatDateTime(displayedOrder.createdAt)}</dd>
+                </div>
+                <div>
+                  <dt>Total</dt>
+                  <dd>{formatCents(displayedOrder.totalCents)}</dd>
+                </div>
+              </dl>
 
-          <section className="detail-section" aria-labelledby="order-items-title">
-            <h4 id="order-items-title">Produits commandés</h4>
-            {displayedOrder.items.length === 0 ? (
-              <p className="muted">Aucun produit détaillé sur cette commande.</p>
-            ) : (
-              <ul className="order-items">
-                {displayedOrder.items.map((item) => (
-                  <li key={item.id}>
-                    <span className="order-item-name">{item.productName}</span>
+              {displayedOrder.withdrawalCode ? (
+                <section className="detail-section" aria-label="Retrait">
+                  <div className="withdrawal-code-box">
                     <span>
-                      {item.quantity} x {formatCents(item.unitPriceCents)}
+                      Code de retrait : <strong>{displayedOrder.withdrawalCode.code}</strong>
                     </span>
-                    <strong>{formatCents(item.totalPriceCents)}</strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                  </div>
+                </section>
+              ) : null}
 
-          {displayedOrder.withdrawalCode ? (
-            <section className="detail-section" aria-labelledby="withdrawal-code-title">
-              <h4 id="withdrawal-code-title">Retrait</h4>
-              <div className="withdrawal-code-box">
-                <span>Code de retrait</span>
-                <strong>{displayedOrder.withdrawalCode.code}</strong>
-                <p>
-                  {formatWithdrawalCodeState(
-                    displayedOrder.withdrawalCode.usedAt,
-                    displayedOrder.withdrawalCode.expiresAt
-                  )}
-                </p>
-              </div>
+              {displayedOrder.specialNote ? (
+                <section className="detail-section" aria-labelledby="order-note-title">
+                  <h4 id="order-note-title">Note client</h4>
+                  <p>{displayedOrder.specialNote}</p>
+                </section>
+              ) : null}
+            </div>
+
+            <section className="detail-section" aria-labelledby="order-items-title">
+              <h4 id="order-items-title">Produits commandés</h4>
+              {displayedOrder.items.length === 0 ? (
+                <p className="muted">Aucun produit détaillé sur cette commande.</p>
+              ) : (
+                <ul className="order-items">
+                  {displayedOrder.items.map((item) => (
+                    <li key={item.id}>
+                      <span className="order-item-name">{item.productName}</span>
+                      <span>
+                        {item.quantity} x {formatCents(item.unitPriceCents)}
+                      </span>
+                      <strong>{formatCents(item.totalPriceCents)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
-          ) : null}
+          </div>
 
-          {displayedOrder.specialNote ? (
-            <section className="detail-section" aria-labelledby="order-note-title">
-              <h4 id="order-note-title">Note client</h4>
-              <p>{displayedOrder.specialNote}</p>
-            </section>
-          ) : null}
-
-          <div className="detail-section">
+          <div className="detail-section detail-actions-section">
+            {withdrawalCodeState ? (
+              <p className="withdrawal-validity" aria-label="Validité du code de retrait">
+                {withdrawalCodeState}
+              </p>
+            ) : null}
             <div className="actions-stack">
-              <OrderStatusActions
-                isUpdating={isStatusUpdating}
-                order={displayedOrder}
-                onUpdateStatus={onUpdateStatus}
-              />
+              {displayedOrder.status !== 'READY' ? (
+                <OrderStatusActions
+                  isUpdating={isStatusUpdating}
+                  order={displayedOrder}
+                  onUpdateStatus={onUpdateStatus}
+                />
+              ) : null}
               {statusError ? (
                 <p className="form-error" role="alert">
                   {statusError}

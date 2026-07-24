@@ -257,7 +257,25 @@ describe('orders dashboard components', () => {
     expect(screen.queryByRole('heading', { name: 'Actions' })).not.toBeInTheDocument();
     expect(screen.queryByText('Snack')).not.toBeInTheDocument();
     expect(screen.queryByText('Snack Campus')).not.toBeInTheDocument();
+    expect(screen.queryByText('Identifiant')).not.toBeInTheDocument();
+    expect(screen.queryByText('Action suivante')).not.toBeInTheDocument();
     expect(screen.getByText('ada@grabgo.test')).toBeInTheDocument();
     expect(screen.queryByText(deprecatedRecommendedActionLabel)).not.toBeInTheDocument();
+  });
+
+  it('does not render the empty status action message for a ready order', () => {
+    render(
+      <OrderDetailPanel
+        isDetailLoading={false}
+        isStatusUpdating={false}
+        isWithdrawalSubmitting={false}
+        order={createMerchantOrder({ status: 'READY' })}
+        onUpdateStatus={vi.fn()}
+        onValidateWithdrawal={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText('Aucune action de statut disponible.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Code de retrait')).toBeInTheDocument();
   });
 });

@@ -66,6 +66,7 @@ export function WithdrawalValidationForm({
     <form className="withdrawal-form" onSubmit={handleSubmit} noValidate>
       <TextInput
         id={codeId}
+        className="withdrawal-code-field"
         label="Code de retrait"
         inputMode="numeric"
         pattern="[0-9]{4}"
