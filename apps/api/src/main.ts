@@ -3,12 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { HttpLoggingMiddleware } from './common/middleware/http-logging.middleware';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('CORS_ORIGIN') ?? 'http://localhost:5173';
 
+  const httpLoggingMiddleware = new HttpLoggingMiddleware();
+  app.use(httpLoggingMiddleware.use.bind(httpLoggingMiddleware));
   app.use(helmet());
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
