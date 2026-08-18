@@ -1,27 +1,27 @@
 version: 2
 
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
+      - 'dependencies'
     commit-message:
-      prefix: "deps"
+      prefix: 'deps'
     groups:
       minor-and-patch:
-        applies-to: "version-updates"
+        applies-to: 'version-updates'
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
     ignore:
-      - dependency-name: "expo"
-      - dependency-name: "expo-status-bar"
-      - dependency-name: "react-native"
-      - dependency-name: "react"
-      - dependency-name: "react-dom"
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-status-bar'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
