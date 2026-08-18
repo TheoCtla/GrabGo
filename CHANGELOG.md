@@ -6,11 +6,12 @@ de l'historique Git du dépôt.
 Les applications et packages du monorepo déclarent actuellement la version
 `0.1.0`.
 
-À ce stade du projet, aucune version n'a encore fait l'objet d'un tag Git ou
-d'une release formelle. Les entrées ci-dessous correspondent donc aux
-évolutions réellement intégrées au projet et identifiables dans l'historique Git.
+La version `0.1.0` constitue la première release formelle préparée du projet.
+Elle correspond à l'état actuel validé du prototype.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-08-18
 
 ### Ajouté
 
@@ -26,6 +27,21 @@ d'une release formelle. Les entrées ci-dessous correspondent donc aux
   hebdomadaires.
 - Protection de la pile mobile dans Dependabot afin d'éviter les mises à jour
   automatiques d'Expo, React Native, React et React DOM.
+
+### Corrigé
+
+- Correction de la gestion du stock lors de la création d'une commande :
+  - refus d'une quantité supérieure au stock disponible ;
+  - refus d'un produit dont le stock est insuffisant ;
+  - agrégation des quantités demandées pour un même produit ;
+  - décrément atomique et conditionnel du stock dans la transaction Prisma ;
+  - protection contre les commandes concurrentes ;
+  - absence de création de commande lorsque le stock n'est plus disponible ;
+  - rollback transactionnel en cas d'échec.
+- Ajout de tests couvrant une commande avec un stock suffisant, le décrément
+  correct du stock, une quantité supérieure au stock, un stock nul et un échec
+  concurrent simulé par `updateMany()` retournant `count: 0`.
+- Le nombre de tests API passe de 157 à 162.
 
 ### Modifié
 
@@ -51,6 +67,7 @@ d'une release formelle. Les entrées ci-dessous correspondent donc aux
 - `bf60500` - ci: add critical npm security audit
 - `627d969` - ci(deps): configure Dependabot updates
 - `a4d99aa` - style(ci): format Dependabot configuration
+- `be009ec` - fix(api): enforce product stock on order creation
 
 ---
 
@@ -294,14 +311,15 @@ des commandes et améliore la maintenabilité du backend.
 
 ## Politique de versionnement
 
-Le projet utilise actuellement la version `0.1.0` dans ses différents
-manifests.
+La version `0.1.0` est la première release formelle préparée de GrabGo. Elle
+correspond à l'état actuel validé du prototype.
 
-Les anciennes versions envisagées pendant la conception du projet ne sont
-pas considérées comme des releases lorsqu'aucun tag Git correspondant
-n'existe.
+Les anciennes étapes chronologiques du développement ne sont pas considérées
+comme des releases. Elles restent documentées comme des jalons identifiables
+dans l'historique Git.
 
-Pour les futures versions de GrabGo, une release devra être matérialisée par :
+Pour les futures versions de GrabGo, la procédure de release continuera à
+s'appuyer sur :
 
 1. un état du projet validé par les contrôles qualité ;
 2. un commit identifié ;
