@@ -53,6 +53,8 @@ export class OrderCreationService {
     this.ensureSlotCanBeReserved(slot, dto.snackId, now);
 
     const products = await this.findAndValidateProducts(dto);
+    const requestedQuantities = this.getRequestedQuantities(dto.items);
+    this.ensureProductsHaveSufficientStock(products, requestedQuantities);
     const orderItems = this.buildOrderItems(dto.items, products);
     const productsTotalCents = orderItems.reduce((total, item) => total + item.totalPriceCents, 0);
     const totalCents = productsTotalCents + SERVICE_FEE_CENTS;
@@ -93,6 +95,26 @@ export class OrderCreationService {
 
       if (reservation.count !== 1) {
         throw new BadRequestException('Slot is no longer available');
+      }
+
+      for (const [productId, quantity] of requestedQuantities) {
+        const stockUpdate = await tx.product.updateMany({
+          where: {
+            id: productId,
+            stock: {
+              gte: quantity
+            }
+          },
+          data: {
+            stock: {
+              decrement: quantity
+            }
+          }
+        });
+
+        if (stockUpdate.count !== 1) {
+          throw new BadRequestException('Product stock is no longer sufficient');
+        }
       }
 
       return tx.order.create({
@@ -183,6 +205,32 @@ export class OrderCreationService {
     }
 
     return products;
+  }
+
+  private getRequestedQuantities(items: CreateOrderItemDto[]): Map<string, number> {
+    const requestedQuantities = new Map<string, number>();
+
+    for (const item of items) {
+      requestedQuantities.set(
+        item.productId,
+        (requestedQuantities.get(item.productId) ?? 0) + item.quantity
+      );
+    }
+
+    return requestedQuantities;
+  }
+
+  private ensureProductsHaveSufficientStock(
+    products: Product[],
+    requestedQuantities: Map<string, number>
+  ): void {
+    for (const product of products) {
+      const requestedQuantity = requestedQuantities.get(product.id) ?? 0;
+
+      if (product.stock < requestedQuantity) {
+        throw new BadRequestException('Product stock is insufficient');
+      }
+    }
   }
 
   private buildOrderItems(

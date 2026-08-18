@@ -20,6 +20,9 @@ type SlotWithSnack = Prisma.SlotGetPayload<{
 }>;
 
 type TransactionMock = {
+  product: {
+    updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.ProductUpdateManyArgs]>;
+  };
   slot: {
     updateMany: jest.Mock<Promise<Prisma.BatchPayload>, [Prisma.SlotUpdateManyArgs]>;
   };
@@ -83,6 +86,9 @@ describe('OrderCreationService', () => {
     updatedAt: now
   };
   const txMock: TransactionMock = {
+    product: {
+      updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.ProductUpdateManyArgs]>()
+    },
     slot: {
       updateMany: jest.fn<Promise<Prisma.BatchPayload>, [Prisma.SlotUpdateManyArgs]>()
     },
@@ -213,6 +219,7 @@ describe('OrderCreationService', () => {
     prismaMock.slot.findUnique.mockResolvedValue(createSlot());
     prismaMock.product.findMany.mockResolvedValue([product]);
     txMock.slot.updateMany.mockResolvedValue({ count: 1 });
+    txMock.product.updateMany.mockResolvedValue({ count: 1 });
     txMock.order.create.mockResolvedValue(order);
     prismaMock.$transaction.mockImplementation((callback) => callback(txMock));
 
@@ -256,6 +263,70 @@ describe('OrderCreationService', () => {
       status: OrderStatus.PENDING_PAYMENT,
       customerFirstName: student.firstName
     });
+  });
+
+  it('creates an order when product stock is sufficient', async () => {
+    const order = arrangeValidOrder();
+
+    await expect(service.createOrder(student.id, dto)).resolves.toEqual(order);
+    expect(txMock.order.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('decrements product stock by the requested quantity atomically', async () => {
+    arrangeValidOrder();
+
+    await service.createOrder(student.id, dto);
+
+    expect(txMock.product.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: product.id,
+        stock: {
+          gte: dto.items[0]?.quantity
+        }
+      },
+      data: {
+        stock: {
+          decrement: dto.items[0]?.quantity
+        }
+      }
+    });
+  });
+
+  it('refuses a quantity greater than the available product stock', async () => {
+    arrangeValidOrder();
+    prismaMock.product.findMany.mockResolvedValue([
+      {
+        ...product,
+        stock: 1
+      }
+    ]);
+
+    await expect(service.createOrder(student.id, dto)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(txMock.order.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a product with zero stock', async () => {
+    arrangeValidOrder();
+    prismaMock.product.findMany.mockResolvedValue([
+      {
+        ...product,
+        stock: 0
+      }
+    ]);
+
+    await expect(service.createOrder(student.id, dto)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(txMock.order.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses the order if the conditional stock update loses a concurrent race', async () => {
+    arrangeValidOrder();
+    txMock.product.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.createOrder(student.id, dto)).rejects.toBeInstanceOf(BadRequestException);
+    expect(txMock.slot.updateMany).toHaveBeenCalledTimes(1);
+    expect(txMock.order.create).not.toHaveBeenCalled();
   });
 
   it('adds serviceFeeCents 49', async () => {
